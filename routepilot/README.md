@@ -19,3 +19,6 @@ A real deployment could use a mobile driver app or GPS device gateway, an authen
 This repository is a concept demonstrator with illustrative data. It does not connect to live vehicles, issue legally valid transport documents, collect signatures or provide a real dispatch service. No operational performance claims are made.
 
 Built as an ERYNDEX portfolio project.
+
+## Run the working API backend
+The project now includes a FastAPI + SQLite backend. Start it with Docker from this folder using `docker compose up --build`, or follow [backend setup](backend/README.md). The dashboard reads delivery records from the API at `http://127.0.0.1:8000` when the API is running. Interactive API documentation is available at `/docs`.
