@@ -1,30 +1,38 @@
-# RoutePilot — Fleet & Delivery Operations MVP
+# RoutePilot — Fleet & Delivery Operations Demo
 
-RoutePilot is an executable fleet and delivery workflow MVP with a FastAPI + SQLite backend and browser dashboard. It supports vehicle records, submitted GPS telemetry, delivery creation/status, proof-of-delivery metadata and delivery-note preview.
+An executable fleet-operations portfolio demo: FastAPI, PostgreSQL 16, Alembic migrations and a static browser dashboard. It demonstrates tenant-scoped delivery management, foreground browser GPS submission, proof-file uploads and delivery-note preview.
 
-## Included
-- Responsive fleet operations dashboard
-- Simulated vehicle positions and route paths (not connected to real GPS devices)
-- Delivery table with status filtering and API-backed delivery creation
-- Proof-of-delivery metadata capture and delivery-note preview
-- Explicit sample-data and non-legal-document notices
+## Run on Windows
 
-## Run locally
-Open `index.html` in a browser for the dashboard. Start the API from this folder with `docker compose up --build`; the API is bound to `127.0.0.1:8000`.
+1. Copy `.env.example` to `.env` and set a unique `POSTGRES_PASSWORD`, a random `AUTH_JWT_SECRET` (at least 32 characters), `BOOTSTRAP_ORG_NAME`, `BOOTSTRAP_ADMIN_EMAIL` and `BOOTSTRAP_ADMIN_PASSWORD` (at least 14 characters). Never commit `.env`.
+2. From this folder, run:
+   ```powershell
+   docker compose up --build
+   ```
+3. In a second terminal, serve the dashboard:
+   ```powershell
+   py -m http.server 5500
+   ```
+4. Open http://127.0.0.1:5500. Sign in with the bootstrap organization, email and password from `.env`.
 
-## CORS configuration
-Copy `.env.example` to `.env` and set `ROUTEPILOT_CORS_ORIGINS` to the exact frontend origin(s), comma-separated. Do not use a wildcard. The default is for local development only. For public hosting, place the API behind a TLS reverse proxy and keep the container port private.
+The API listens on http://127.0.0.1:8000; interactive docs: http://127.0.0.1:8000/docs. PostgreSQL and proof uploads persist in Docker volumes. The first run applies migrations and seeds illustrative records for the bootstrap organization.
 
-## Health checks
-The API exposes `/health` for process liveness and `/ready` for database readiness. Docker uses the readiness endpoint for its container health check.
+## Demonstrated workflows
 
-## Production architecture direction
-A commercial deployment requires authenticated users, organization/tenant isolation, role permissions, PostgreSQL with migrations, tested backups and restore, HTTPS, monitoring, and operational runbooks. Real driver GPS requires a signed-in driver, vehicle assignment, explicit browser location permission and an active foreground web session. Browser web apps cannot guarantee continuous background GPS after the page is closed or suspended; reliable background tracking requires a suitable native app or dedicated device integration. Location access, consent, retention, role permissions, document templates and jurisdiction-specific requirements must be designed before production use.
+- Login with short-lived bearer tokens; role checks and organization-scoped queries.
+- Fleet and delivery listing; create deliveries and assign vehicles.
+- Explicit foreground GPS sharing after browser permission; sharing stops when requested or when the page is closed.
+- JPEG, PNG and PDF proof upload (10 MB limit), tenant-scoped file retrieval and delivery completion.
+- Delivery-note preview marked as illustrative, not a legally valid transport document.
 
-## Important scope
-This is an MVP, not a production-ready fleet system. Initial records are sample data. It does not connect to live vehicle hardware, store uploaded photographs or biometric signatures, issue legally valid transport documents, or include authentication/tenant isolation. Do not expose it publicly or enter real personal data until those controls are implemented and tested.
+## Backups
 
-Built as an ERYNDEX portfolio project.
+From this folder, run `sh ops/backup-postgres.sh` to back up PostgreSQL and the proof-file volume. Restore with `sh ops/restore-postgres.sh database.dump proofs.tar.gz`. Restore is destructive; use a test environment first. Keep backups encrypted and off-host. A restore drill has not yet been certified.
 
-## Backend
-See [backend setup](backend/README.md). Interactive API documentation is available at `/docs` while the local API is running.
+## Important limitations
+
+This is a portfolio demonstration, not a production fleet platform. GPS is foreground browser GPS, not guaranteed background/mobile tracking. Uploads are type/signature checked but do not yet have malware scanning, retention automation or production object storage. Email, production TLS/domain, monitoring, rate limits and formal security review remain outside this demo. Do not use real customer data or expose it publicly without those controls.
+
+## Tests
+
+`cd backend; py -m pip install -r requirements.txt; py -m pytest -q`. CI also runs the API suite against PostgreSQL 16.
