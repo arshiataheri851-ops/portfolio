@@ -72,3 +72,8 @@ def test_resolved_ticket_cannot_be_assigned():
     assert created.status_code == 201
     assert client.patch(f"/tickets/{ticket_id}/status", json={"status": "resolved"}).status_code == 200
     assert client.patch(f"/tickets/{ticket_id}/assign", json={"assignee": "Support Agent"}).status_code == 409
+
+def test_readiness_checks_database():
+    response = client.get("/ready")
+    assert response.status_code == 200
+    assert response.json()["status"] == "ready"
