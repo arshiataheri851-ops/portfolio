@@ -20,3 +20,6 @@ A production version could integrate authenticated intake APIs, a ticketing data
 All records and metrics are illustrative. Interactions run only in the browser; assignment does not persist or contact a service. The score is a rule-based example, not an AI prediction. This is a portfolio concept, not a deployed customer system.
 
 Built as an ERYNDEX portfolio project.
+
+## Run the working API backend
+A FastAPI + SQLite backend is included. Start it with Docker from this folder using `docker compose up --build`, or follow [backend setup](backend/README.md). The dashboard reads and assigns tickets through the API at `http://127.0.0.1:8001`. Interactive API documentation is available at `/docs`.
