@@ -3,6 +3,7 @@ from pathlib import Path
 import sqlite3
 import os
 import psycopg
+from app.notifications import send_email
 from app.database import connect as open_database, is_postgres
 from fastapi import FastAPI, HTTPException, Query, Depends
 from fastapi.middleware.cors import CORSMiddleware
@@ -167,6 +168,34 @@ def ticket_events(ticket_id:str,limit:int=Query(default=100,ge=1,le=500),user=De
         if not c.execute("SELECT 1 FROM tickets WHERE id=? AND organization_id=?",(ticket_id,org)).fetchone(): raise HTTPException(404,"Ticket not found")
         rows=c.execute("SELECT id,ticket_id,event_type,actor,details,created_at FROM ticket_events WHERE ticket_id=? AND organization_id=? ORDER BY id DESC LIMIT ?",(ticket_id,org,limit)).fetchall()
     return [dict(row) for row in rows]
+
+
+class EmailNotificationIn(BaseModel):
+    ticket_id: str = Field(min_length=3, max_length=80)
+    recipient: str = Field(min_length=3, max_length=320)
+    subject: str = Field(min_length=3, max_length=200)
+    body: str = Field(min_length=1, max_length=10000)
+
+
+@app.post("/notifications/email", status_code=202)
+def email_notification(data: EmailNotificationIn, user=Depends(require_roles("admin", "manager", "agent"))):
+    org = user["organization_id"]
+    with db() as c:
+        ticket = c.execute("SELECT id,title FROM tickets WHERE id=? AND organization_id=?", (data.ticket_id, org)).fetchone()
+    if not ticket:
+        raise HTTPException(404, "Ticket not found")
+    try:
+        message_id = send_email(data.recipient, data.subject, data.body)
+    except RuntimeError as exc:
+        raise HTTPException(503, str(exc))
+    with db() as c:
+        c.execute(
+            "INSERT INTO ticket_events(ticket_id,event_type,actor,details,created_at,organization_id) VALUES(?,?,?,?,?,?)",
+            (data.ticket_id, "email_sent", user["email"], "Email sent to " + data.recipient,
+             datetime.now(timezone.utc).isoformat(), org),
+        )
+    return {"status": "accepted", "ticket_id": data.ticket_id, "message_id": message_id}
+
 
 @app.get("/analytics/summary")
 def summary(user=Depends(require_roles("admin","manager","agent","viewer"))):
