@@ -59,5 +59,8 @@ jobs:
         env:
           DATABASE_URL: postgresql+psycopg://app:ci-password@localhost:5432/${{ matrix.product == 'RoutePilot' && 'routepilot_test' || 'signaldesk_test' }}
         run: alembic upgrade head
-      - name: Run tests
+      - name: Run tests against PostgreSQL
+        env:
+          DATABASE_URL: postgresql+psycopg://app:ci-password@localhost:5432/${{ matrix.product == 'RoutePilot' && 'routepilot_test' || 'signaldesk_test' }}
+          AUTH_JWT_SECRET: ci-only-secret-that-is-at-least-32-bytes-long
         run: python -m pytest -q
