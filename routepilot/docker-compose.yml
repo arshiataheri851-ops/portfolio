@@ -29,6 +29,8 @@ services:
     restart: unless-stopped
     ports:
       - "127.0.0.1:8000:8000"
+    volumes:
+      - routepilot_proof_files:/data/proofs
     environment:
       DATABASE_URL: postgresql+psycopg://${POSTGRES_USER:-routepilot}:${POSTGRES_PASSWORD}@postgres:5432/routepilot
       ROUTEPILOT_CORS_ORIGINS: ${ROUTEPILOT_CORS_ORIGINS:-http://localhost:3000}
@@ -42,3 +44,4 @@ services:
 
 volumes:
   routepilot_postgres_data:
+  routepilot_proof_files:
