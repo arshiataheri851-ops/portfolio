@@ -1,0 +1,22 @@
+# ERYNDEX — Company Website
+
+Static, responsive company website published as a subdirectory of the existing GitHub Pages portfolio repository.
+
+## Preview
+
+After GitHub Pages deployment, the site is expected at:
+https://arshiataheri851-ops.github.io/portfolio/eryndex/
+
+## Files
+- `index.html` — page structure and content
+- `assets/style.css` — responsive visual system
+- `assets/script.js` — mobile navigation and scroll progress
+
+## Before public launch
+1. Replace the placeholder email address in the contact section with a verified company mailbox.
+2. Have every team member approve their biography and public links.
+3. Confirm the company’s legal name, registered status, and service commitments before making legal or contractual claims.
+4. Review all project descriptions against the current repositories and keep demonstrator limitations visible.
+5. Add an approved company logo and real team photographs only with permission.
+
+No framework or build step is required. The page is plain HTML, CSS and JavaScript.
