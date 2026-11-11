@@ -98,3 +98,33 @@ def test_tenant_cannot_read_or_update_another_organizations_delivery():
     assert client.get("/deliveries/DL-OTHER/note").status_code == 404
     assert all(row["id"] != "DL-OTHER" for row in client.get("/deliveries").json())
     assert client.patch("/deliveries/DL-OTHER/status", json={"status":"cancelled"}).status_code == 404
+
+
+def test_proof_upload_validates_type_and_download_is_tenant_scoped(tmp_path, monkeypatch):
+    from app import main as routepilot_main
+    monkeypatch.setenv("ROUTEPILOT_PROOF_STORAGE", str(tmp_path))
+    delivery_id = f"DL-{uuid4().hex[:10]}"
+    created = client.post("/deliveries", json={
+        "id": delivery_id, "recipient": "Upload Test", "address": "Berlin Mitte",
+        "route_id": "R-UP", "vehicle_id": "VAN-12"
+    })
+    assert created.status_code == 201
+    rejected = client.post(
+        f"/deliveries/{delivery_id}/proof/upload",
+        data={"recipient_name": "Test receiver"},
+        files={"file": ("bad.txt", b"not an image", "text/plain")},
+    )
+    assert rejected.status_code == 415
+    uploaded = client.post(
+        f"/deliveries/{delivery_id}/proof/upload",
+        data={"recipient_name": "Test receiver", "note": "Package received"},
+        files={"file": ("receipt.pdf", b"%PDF-1.4\\nproof", "application/pdf")},
+    )
+    assert uploaded.status_code == 201
+    proof = uploaded.json()
+    assert proof["content_type"] == "application/pdf"
+    assert proof["size_bytes"] > 0
+    downloaded = client.get(f"/deliveries/{delivery_id}/proofs/{proof['id']}/file")
+    assert downloaded.status_code == 200
+    assert downloaded.content.startswith(b"%PDF-")
+    assert client.get(f"/deliveries/{delivery_id}/proofs/999999/file").status_code == 404
