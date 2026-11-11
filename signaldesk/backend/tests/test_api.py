@@ -3,7 +3,7 @@ from uuid import uuid4
 
 from fastapi.testclient import TestClient
 
-from app.main import app
+from app.main import app, db
 from app.security import current_user
 
 # Existing workflow tests run as a trusted fixture identity; auth rejection is tested separately.
@@ -12,6 +12,17 @@ app.dependency_overrides[current_user] = lambda: {
 }
 
 client = TestClient(app)
+
+# Deterministic tenant fixture; CI intentionally has no bootstrap secrets.
+with db() as _db:
+    _db.execute("INSERT OR IGNORE INTO organizations(id,name,created_at) VALUES('test-org','Test Org','2026-01-01T00:00:00+00:00')")
+    _db.executemany("INSERT OR IGNORE INTO tickets(id,title,queue,account_tier,priority,status,assignee,created_at,due_at,organization_id) VALUES(?,?,?,?,?,?,?,?,?,?)", [
+        ('SD-1048','Payment confirmation delayed','Checkout','Enterprise','High','open',None,'2026-01-01T00:00:00+00:00','2027-01-01T00:00:00+00:00','test-org'),
+        ('SD-1047','Update billing contact details','Billing','Standard','Medium','open',None,'2026-01-01T00:00:00+00:00','2027-01-01T00:00:00+00:00','test-org'),
+        ('SD-1046','Webhook events not received','Integrations','Enterprise','High','open',None,'2026-01-01T00:00:00+00:00','2027-01-01T00:00:00+00:00','test-org'),
+        ('SD-1045','Export monthly usage report','Reporting','Standard','Low','open',None,'2026-01-01T00:00:00+00:00','2027-01-01T00:00:00+00:00','test-org'),
+        ('SD-1044','Invite link expired','Accounts','Growth','Medium','open',None,'2026-01-01T00:00:00+00:00','2027-01-01T00:00:00+00:00','test-org'),
+    ])
 
 
 def test_health():
