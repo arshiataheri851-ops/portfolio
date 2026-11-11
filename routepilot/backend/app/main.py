@@ -28,7 +28,9 @@ def connect():
 
 def init_db():
     if is_postgres():
-        # PostgreSQL schema is managed exclusively by Alembic migrations.
+        # Alembic owns the schema; this step only provisions the configured bootstrap admin.
+        with connect() as c:
+            initialize_auth(c)
         return
     with connect() as c:
         c.executescript("""
