@@ -5,6 +5,7 @@ import os
 from fastapi import FastAPI, HTTPException, Query
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel, Field
+from app.security import initialize_auth
 
 DB=Path(os.getenv("SIGNALDESK_DB",str(Path(__file__).resolve().parent.parent/"signaldesk.db")))
 DB.parent.mkdir(parents=True,exist_ok=True)
@@ -26,6 +27,7 @@ def init():
     with db() as c:
         c.execute("""CREATE TABLE IF NOT EXISTS tickets(id TEXT PRIMARY KEY,title TEXT NOT NULL,queue TEXT NOT NULL,account_tier TEXT NOT NULL,priority TEXT NOT NULL,status TEXT NOT NULL DEFAULT 'open',assignee TEXT,created_at TEXT NOT NULL,due_at TEXT NOT NULL)""")
         c.execute("""CREATE TABLE IF NOT EXISTS ticket_events(id INTEGER PRIMARY KEY AUTOINCREMENT,ticket_id TEXT NOT NULL,event_type TEXT NOT NULL,actor TEXT NOT NULL,details TEXT NOT NULL,created_at TEXT NOT NULL,FOREIGN KEY(ticket_id) REFERENCES tickets(id))""")
+        initialize_auth(c)
         if c.execute("SELECT COUNT(*) FROM tickets").fetchone()[0]==0:
             now=datetime.now(timezone.utc)
             rows=[
