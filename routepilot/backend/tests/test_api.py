@@ -3,6 +3,12 @@ from uuid import uuid4
 from fastapi.testclient import TestClient
 
 from app.main import app
+from app.security import current_user
+
+# Existing workflow tests run as a trusted fixture identity; auth rejection is tested separately.
+app.dependency_overrides[current_user] = lambda: {
+    'id': 'test-user', 'organization_id': 'test-org', 'email': 'tester@example.test', 'role': 'admin'
+}
 
 client = TestClient(app)
 
@@ -68,3 +74,13 @@ def test_readiness_checks_database():
     response = client.get("/ready")
     assert response.status_code == 200
     assert response.json()["status"] == "ready"
+
+
+def test_business_api_rejects_missing_authentication():
+    override = app.dependency_overrides.pop(current_user, None)
+    try:
+        response = client.get("/deliveries")
+        assert response.status_code == 401
+    finally:
+        if override is not None:
+            app.dependency_overrides[current_user] = override
