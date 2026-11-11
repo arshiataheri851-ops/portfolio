@@ -1,32 +1,37 @@
 # SignalDesk API
 
-## Run locally
-```bash
+SignalDesk is a local service-desk MVP built with FastAPI and SQLite. Ticket assignment and status changes persist, SLA risk is calculated from each ticket's due date, and workflow events are retained in an audit-history table.
+
+## Run locally (Windows CMD)
+```cmd
 cd backend
-python -m venv .venv
-# Windows: .venv\\Scripts\\activate
-# macOS/Linux: source .venv/bin/activate
-pip install -r requirements.txt
-uvicorn app.main:app --reload
+py -m venv .venv
+.venv\Scripts\activate.bat
+py -m pip install -r requirements.txt
+py -m uvicorn app.main:app --reload --port 8001
 ```
-API docs: http://127.0.0.1:8000/docs
+Open http://127.0.0.1:8001 and interactive docs at http://127.0.0.1:8001/docs.
 
-## Docker
-From the project root: `docker compose up --build` (API on port 8001).
+## Run with Docker
+From the SignalDesk project root: `docker compose up --build`.
+The database is persisted in the `signaldesk_data` Docker volume.
 
-## Endpoints
-- GET /health
-- GET /tickets?status=&queue=&priority=&q=
-- POST /tickets
-- PATCH /tickets/{id}/assign
-- PATCH /tickets/{id}/status
-- GET /analytics/summary
+## Main workflows
+- `GET /tickets` — list and filter by status, queue, priority, SLA risk and text query
+- `POST /tickets` — create a ticket with a due date
+- `PATCH /tickets/{ticket_id}/assign` — assign an open ticket
+- `PATCH /tickets/{ticket_id}/status` — open, in progress or resolved
+- `GET /tickets/{ticket_id}/events` — audit history for a ticket
+- `GET /analytics/summary` — current queue/SLA summary
 
-## Behavior
-Ticket records persist in SQLite. The API computes SLA risk from due_at and ranks tickets using a transparent weighted rule based on priority, remaining SLA time and account tier. This is deterministic rule-based triage, not an AI model.
-
-## Production considerations
-Add authentication, role-based permissions, tenant isolation, audit events, rate limits, migrations and a production database before handling real customer information.
+SLA risk is a transparent rule: a ticket is at risk when it is not resolved and has 30 minutes or less remaining. Priority score is a deterministic weighted rule, not an AI prediction.
 
 ## Tests
-Install `pytest httpx` and run `pytest` from this directory.
+From this folder:
+```cmd
+py -m pip install -r requirements.txt
+py -m pytest -q
+```
+
+## Current limitations before customer deployment
+This is an executable MVP, not a hardened commercial deployment. It has no user authentication, role permissions, tenant isolation, email intake, outbound notifications, configurable SLA calendars, attachments, database migrations, backups, or external integrations. Do not expose it to the public internet or store real customer personal data until these controls are implemented. Configure CORS for the exact production frontend origin before deployment.
