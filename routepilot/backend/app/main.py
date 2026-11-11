@@ -14,6 +14,7 @@ app.add_middleware(CORSMiddleware, allow_origins=["*"], allow_methods=["*"], all
 def connect():
     con = sqlite3.connect(DB)
     con.row_factory = sqlite3.Row
+    con.execute("PRAGMA foreign_keys=ON")
     return con
 
 def init_db():
@@ -35,21 +36,21 @@ def init_db():
 init_db()
 
 class VehicleIn(BaseModel):
-    label: str
-    status: str = "idle"
+    label: str = Field(min_length=2, max_length=80)
+    status: str = Field(default="idle", pattern="^(idle|on_route|delayed|maintenance)$")
 class PositionIn(BaseModel):
     latitude: float = Field(ge=-90, le=90)
     longitude: float = Field(ge=-180, le=180)
     recorded_at: datetime | None = None
 class DeliveryIn(BaseModel):
-    id: str
-    recipient: str
-    address: str
-    route_id: str
+    id: str = Field(min_length=3, max_length=40, pattern="^[A-Za-z0-9_-]+$")
+    recipient: str = Field(min_length=2, max_length=120)
+    address: str = Field(min_length=3, max_length=240)
+    route_id: str = Field(min_length=2, max_length=40)
     vehicle_id: str | None = None
     eta: str | None = None
 class StatusIn(BaseModel):
-    status: str
+    status: str = Field(pattern="^(scheduled|in_transit|delivered|attention|cancelled)$")
 class ProofIn(BaseModel):
     recipient_name: str
     method: str = Field(pattern="^(signature|photo|code|manual)$")
@@ -80,6 +81,27 @@ def record_position(vehicle_id: str, data: PositionIn):
         cur=c.execute("INSERT INTO positions(vehicle_id,latitude,longitude,recorded_at) VALUES(?,?,?,?)",(vehicle_id,data.latitude,data.longitude,stamp))
     return {"id":cur.lastrowid,"vehicle_id":vehicle_id,"latitude":data.latitude,"longitude":data.longitude,"recorded_at":stamp}
 
+@app.get("/vehicles/{vehicle_id}/positions")
+def position_history(vehicle_id: str, limit: int = Query(default=100, ge=1, le=1000)):
+    with connect() as c:
+        if not c.execute("SELECT 1 FROM vehicles WHERE id=?", (vehicle_id,)).fetchone():
+            raise HTTPException(404, "Vehicle not found")
+        rows = c.execute(
+            "SELECT id, vehicle_id, latitude, longitude, recorded_at FROM positions WHERE vehicle_id=? ORDER BY id DESC LIMIT ?",
+            (vehicle_id, limit),
+        ).fetchall()
+    return [dict(row) for row in rows]
+
+
+@app.get("/deliveries/{delivery_id}/proofs")
+def delivery_proofs(delivery_id: str):
+    with connect() as c:
+        if not c.execute("SELECT 1 FROM deliveries WHERE id=?", (delivery_id,)).fetchone():
+            raise HTTPException(404, "Delivery not found")
+        rows = c.execute("SELECT * FROM proofs WHERE delivery_id=? ORDER BY id DESC", (delivery_id,)).fetchall()
+    return [dict(row) for row in rows]
+
+
 @app.get("/deliveries")
 def deliveries(status: str | None = Query(default=None)):
     with connect() as c:
@@ -90,14 +112,17 @@ def deliveries(status: str | None = Query(default=None)):
 @app.post("/deliveries", status_code=201)
 def create_delivery(data: DeliveryIn):
     with connect() as c:
+        if data.vehicle_id and not c.execute("SELECT 1 FROM vehicles WHERE id=?",(data.vehicle_id,)).fetchone():
+            raise HTTPException(422,"Unknown vehicle_id")
         try: c.execute("INSERT INTO deliveries VALUES(?,?,?,?,?,'scheduled',?,?)",(data.id,data.recipient,data.address,data.route_id,data.vehicle_id,data.eta,datetime.now(timezone.utc).isoformat()))
         except sqlite3.IntegrityError: raise HTTPException(409,"Delivery ID already exists")
     return {"id":data.id,"status":"scheduled"}
 
 @app.patch("/deliveries/{delivery_id}/status")
 def update_delivery(delivery_id: str, data: StatusIn):
-    if data.status not in {"scheduled","in_transit","delivered","attention","cancelled"}: raise HTTPException(422,"Unsupported status")
     with connect() as c:
+        if data.status == "delivered" and not c.execute("SELECT 1 FROM proofs WHERE delivery_id=?",(delivery_id,)).fetchone():
+            raise HTTPException(409,"Record proof of delivery before marking it delivered")
         cur=c.execute("UPDATE deliveries SET status=? WHERE id=?",(data.status,delivery_id))
         if not cur.rowcount: raise HTTPException(404,"Delivery not found")
     return {"id":delivery_id,"status":data.status}
