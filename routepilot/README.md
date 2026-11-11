@@ -9,16 +9,19 @@ RoutePilot is an executable fleet and delivery workflow MVP with a FastAPI + SQL
 - Proof-of-delivery metadata capture and delivery-note preview
 - Explicit sample-data and non-legal-document notices
 
-## Run
-Open `index.html` in a browser. No build step or external API is required.
+## Run locally
+Open `index.html` in a browser for the dashboard. Start the API from this folder with `docker compose up --build`; the API is bound to `127.0.0.1:8000`.
+
+## CORS configuration
+Copy `.env.example` to `.env` and set `ROUTEPILOT_CORS_ORIGINS` to the exact frontend origin(s), comma-separated. Do not use a wildcard. The default is for local development only. For public hosting, place the API behind a TLS reverse proxy and keep the container port private.
 
 ## Production architecture direction
-A real deployment could use a mobile driver app or GPS device gateway, an authenticated event-ingestion API, a geospatial store, a dispatch service, a document-rendering service, object storage and an auditable proof-of-delivery workflow. Location access, consent, retention, role permissions, document templates and jurisdiction-specific requirements must be designed before production use.
+A commercial deployment requires authenticated users, organization/tenant isolation, role permissions, PostgreSQL with migrations, tested backups and restore, HTTPS, monitoring, and operational runbooks. Real driver GPS requires a signed-in driver, vehicle assignment, explicit browser location permission and an active foreground web session. Browser web apps cannot guarantee continuous background GPS after the page is closed or suspended; reliable background tracking requires a suitable native app or dedicated device integration. Location access, consent, retention, role permissions, document templates and jurisdiction-specific requirements must be designed before production use.
 
 ## Important scope
-The API and dashboard are usable as a local MVP. Initial records are sample data. It does not connect to live vehicle hardware, store uploaded photographs or biometric signatures, issue legally valid transport documents, or include authentication/tenant isolation. Do not expose it publicly or enter real personal data until those controls are implemented.
+This is an MVP, not a production-ready fleet system. Initial records are sample data. It does not connect to live vehicle hardware, store uploaded photographs or biometric signatures, issue legally valid transport documents, or include authentication/tenant isolation. Do not expose it publicly or enter real personal data until those controls are implemented and tested.
 
 Built as an ERYNDEX portfolio project.
 
-## Run the working API backend
-The project now includes a FastAPI + SQLite backend. Start it with Docker from this folder using `docker compose up --build`, or follow [backend setup](backend/README.md). The dashboard reads delivery records from the API at `http://127.0.0.1:8000` when the API is running. Interactive API documentation is available at `/docs`.
+## Backend
+See [backend setup](backend/README.md). Interactive API documentation is available at `/docs` while the local API is running.
