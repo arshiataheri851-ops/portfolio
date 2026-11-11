@@ -47,13 +47,14 @@ def init_db():
 init_db()
 
 class LoginIn(BaseModel):
+    organization_name: str = Field(min_length=2, max_length=120)
     email: str = Field(min_length=3, max_length=320)
     password: str = Field(min_length=1, max_length=256)
 
 @app.post("/auth/login")
 def login(data: LoginIn):
     with connect() as c:
-        user = authenticate(c, data.email, data.password)
+        user = authenticate(c, data.organization_name, data.email, data.password)
     if not user:
         raise HTTPException(status_code=401, detail="Invalid email or password")
     return {"access_token": issue_token(user), "token_type": "bearer", "expires_in": 1800}
