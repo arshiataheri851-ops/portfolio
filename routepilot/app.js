@@ -52,14 +52,8 @@ async function recordProof(button){
   const form=new FormData();form.append("recipient_name",recipient_name);form.append("file",file);form.append("note",prompt("Delivery note (optional):")||"");
   try{const response=await apiFetch(API+"/deliveries/"+encodeURIComponent(button.dataset.proof)+"/proof/upload",{method:"POST",body:form});const data=await response.json();if(!response.ok)throw Error(data.detail||"Could not upload proof");await loadDeliveries();}
   catch(error){alert(error.message);}
-  return;
-  /* legacy metadata-only flow retained below for backwards compatibility */
-  const recipient_name=prompt("Name of the person receiving the delivery:");
-  if(!recipient_name)return;
-  const note=prompt("Delivery note (optional):")||"";
-  try{const response=await apiFetch(API+"/deliveries/"+encodeURIComponent(button.dataset.proof)+"/proof",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({recipient_name,method:"manual",note})});const data=await response.json();if(!response.ok)throw Error(data.detail||"Could not save proof");await loadDeliveries();}
-  catch(error){alert(error.message);}
 }
+
 filter.addEventListener("change",loadDeliveries);
 document.querySelector("#newDeliveryForm").addEventListener("submit",async event=>{
   event.preventDefault();const form=event.currentTarget;const data=Object.fromEntries(new FormData(form).entries());
