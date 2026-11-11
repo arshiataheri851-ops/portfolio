@@ -31,6 +31,18 @@ def init():
         # Alembic owns the schema; this step only provisions the configured bootstrap admin.
         with db() as c:
             initialize_auth(c)
+            org = c.execute("SELECT id FROM organizations WHERE name=?", (os.getenv("BOOTSTRAP_ORG_NAME", "").strip(),)).fetchone()
+            if org:
+                org_id = org["id"]
+                if not c.execute("SELECT 1 FROM tickets WHERE organization_id=? LIMIT 1", (org_id,)).fetchone():
+                    now = datetime.now(timezone.utc)
+                    rows = [
+                        ("SD-1048","Payment confirmation delayed","Checkout","Enterprise","High","open",None,now.isoformat(),(now+timedelta(minutes=12)).isoformat(),org_id),
+                        ("SD-1047","Update billing contact details","Billing","Standard","Medium","open",None,now.isoformat(),(now+timedelta(hours=3)).isoformat(),org_id),
+                        ("SD-1046","Webhook events not received","Integrations","Enterprise","High","open",None,now.isoformat(),(now+timedelta(minutes=8)).isoformat(),org_id),
+                        ("SD-1045","Export monthly usage report","Reporting","Standard","Low","open",None,now.isoformat(),(now+timedelta(days=1)).isoformat(),org_id),
+                        ("SD-1044","Invite link expired","Accounts","Growth","Medium","open",None,now.isoformat(),(now+timedelta(minutes=24)).isoformat(),org_id)]
+                    c.executemany("INSERT INTO tickets(id,title,queue,account_tier,priority,status,assignee,created_at,due_at,organization_id) VALUES(?,?,?,?,?,?,?,?,?,?) ON CONFLICT(id) DO NOTHING", rows)
         return
     with db() as c:
         c.execute("""CREATE TABLE IF NOT EXISTS tickets(id TEXT PRIMARY KEY,title TEXT NOT NULL,queue TEXT NOT NULL,account_tier TEXT NOT NULL,priority TEXT NOT NULL,status TEXT NOT NULL DEFAULT 'open',assignee TEXT,created_at TEXT NOT NULL,due_at TEXT NOT NULL)""")
