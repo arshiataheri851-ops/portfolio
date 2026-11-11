@@ -2,7 +2,7 @@ from uuid import uuid4
 
 from fastapi.testclient import TestClient
 
-from app.main import app
+from app.main import app, connect
 from app.security import current_user
 
 # Existing workflow tests run as a trusted fixture identity; auth rejection is tested separately.
@@ -11,6 +11,12 @@ app.dependency_overrides[current_user] = lambda: {
 }
 
 client = TestClient(app)
+
+# Deterministic tenant fixture; CI intentionally has no bootstrap secrets.
+with connect() as _db:
+    _db.execute("INSERT OR IGNORE INTO organizations(id,name,created_at) VALUES('test-org','Test Org','2026-01-01T00:00:00+00:00')")
+    _db.execute("INSERT OR IGNORE INTO vehicles(id,label,status,organization_id) VALUES('VAN-12','Van 12','on_route','test-org')")
+    _db.execute("INSERT OR IGNORE INTO deliveries(id,recipient,address,route_id,vehicle_id,status,eta,created_at,organization_id) VALUES('DL-2083','Market Hall','Berlin Kreuzberg','R-204','VAN-12','delivered',NULL,'2026-01-01T00:00:00+00:00','test-org')")
 
 
 def test_health():
