@@ -104,3 +104,11 @@ def test_business_api_rejects_missing_authentication():
     finally:
         if override is not None:
             app.dependency_overrides[current_user] = override
+
+def test_tenant_cannot_read_or_update_another_organizations_ticket():
+    with db() as c:
+        c.execute("INSERT OR IGNORE INTO organizations(id,name,created_at) VALUES('other-org','Other Org','2026-01-02T00:00:00+00:00')")
+        c.execute("INSERT OR IGNORE INTO tickets(id,title,queue,account_tier,priority,status,assignee,created_at,due_at,organization_id) VALUES('SD-OTHER','Private ticket','Billing','Standard','Low','open',NULL,'2026-01-02T00:00:00+00:00','2027-01-02T00:00:00+00:00','other-org')")
+    assert client.get("/tickets/SD-OTHER/events").status_code == 404
+    assert all(row["id"] != "SD-OTHER" for row in client.get("/tickets").json())
+    assert client.patch("/tickets/SD-OTHER/status", json={"status":"resolved"}).status_code == 404
