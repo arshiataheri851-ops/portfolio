@@ -15,7 +15,7 @@ client = TestClient(app)
 
 # Deterministic tenant fixture; CI intentionally has no bootstrap secrets.
 with db() as _db:
-    _db.execute("INSERT INTO organizations(id,name,created_at) VALUES('test-org','Test Org','2026-01-01T00:00:00+00:00') ON CONFLICT DO NOTHING ON CONFLICT DO NOTHING")
+    _db.execute("INSERT INTO organizations(id,name,created_at) VALUES('test-org','Test Org','2026-01-01T00:00:00+00:00') ON CONFLICT DO NOTHING")
     _db.executemany("INSERT INTO tickets(id,title,queue,account_tier,priority,status,assignee,created_at,due_at,organization_id) VALUES(?,?,?,?,?,?,?,?,?,?)", [
         ('SD-1048','Payment confirmation delayed','Checkout','Enterprise','High','open',None,'2026-01-01T00:00:00+00:00','2027-01-01T00:00:00+00:00','test-org'),
         ('SD-1047','Update billing contact details','Billing','Standard','Medium','open',None,'2026-01-01T00:00:00+00:00','2027-01-01T00:00:00+00:00','test-org'),
