@@ -15,8 +15,8 @@ client = TestClient(app)
 
 # Deterministic tenant fixture; CI intentionally has no bootstrap secrets.
 with db() as _db:
-    _db.execute("INSERT OR IGNORE INTO organizations(id,name,created_at) VALUES('test-org','Test Org','2026-01-01T00:00:00+00:00')")
-    _db.executemany("INSERT OR IGNORE INTO tickets(id,title,queue,account_tier,priority,status,assignee,created_at,due_at,organization_id) VALUES(?,?,?,?,?,?,?,?,?,?)", [
+    _db.execute("INSERT INTO organizations(id,name,created_at) VALUES('test-org','Test Org','2026-01-01T00:00:00+00:00') ON CONFLICT DO NOTHING ON CONFLICT DO NOTHING")
+    _db.executemany("INSERT INTO tickets(id,title,queue,account_tier,priority,status,assignee,created_at,due_at,organization_id) VALUES(?,?,?,?,?,?,?,?,?,?)", [
         ('SD-1048','Payment confirmation delayed','Checkout','Enterprise','High','open',None,'2026-01-01T00:00:00+00:00','2027-01-01T00:00:00+00:00','test-org'),
         ('SD-1047','Update billing contact details','Billing','Standard','Medium','open',None,'2026-01-01T00:00:00+00:00','2027-01-01T00:00:00+00:00','test-org'),
         ('SD-1046','Webhook events not received','Integrations','Enterprise','High','open',None,'2026-01-01T00:00:00+00:00','2027-01-01T00:00:00+00:00','test-org'),
@@ -107,8 +107,8 @@ def test_business_api_rejects_missing_authentication():
 
 def test_tenant_cannot_read_or_update_another_organizations_ticket():
     with db() as c:
-        c.execute("INSERT OR IGNORE INTO organizations(id,name,created_at) VALUES('other-org','Other Org','2026-01-02T00:00:00+00:00')")
-        c.execute("INSERT OR IGNORE INTO tickets(id,title,queue,account_tier,priority,status,assignee,created_at,due_at,organization_id) VALUES('SD-OTHER','Private ticket','Billing','Standard','Low','open',NULL,'2026-01-02T00:00:00+00:00','2027-01-02T00:00:00+00:00','other-org')")
+        c.execute("INSERT INTO organizations(id,name,created_at) VALUES('other-org','Other Org','2026-01-02T00:00:00+00:00') ON CONFLICT DO NOTHING")
+        c.execute("INSERT INTO tickets(id,title,queue,account_tier,priority,status,assignee,created_at,due_at,organization_id) VALUES('SD-OTHER','Private ticket','Billing','Standard','Low','open',NULL,'2026-01-02T00:00:00+00:00','2027-01-02T00:00:00+00:00','other-org') ON CONFLICT DO NOTHING")
     assert client.get("/tickets/SD-OTHER/events").status_code == 404
     assert all(row["id"] != "SD-OTHER" for row in client.get("/tickets").json())
     assert client.patch("/tickets/SD-OTHER/status", json={"status":"resolved"}).status_code == 404
