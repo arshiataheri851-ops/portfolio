@@ -61,7 +61,12 @@ def list_tickets(status:str|None=Query(None),queue:str|None=Query(None),priority
     if q: clauses.append("(id LIKE ? OR title LIKE ? OR queue LIKE ?)");values += [f"%{q}%"]*3
     sql="SELECT * FROM tickets"+(" WHERE "+" AND ".join(clauses) if clauses else "")
     with db() as c: rows=c.execute(sql,values).fetchall()
-    items=[serialize(r) for r in rows]\n    if sla_state:\n        if sla_state not in {"at_risk","safe"}: raise HTTPException(422,"sla_state must be at_risk or safe")\n        items=[item for item in items if item["sla_state"]==sla_state]\n    return sorted(items,key=lambda x:x["priority_score"],reverse=True)
+    items=[serialize(r) for r in rows]
+    if sla_state:
+        if sla_state not in {"at_risk","safe"}:
+            raise HTTPException(422,"sla_state must be at_risk or safe")
+        items=[item for item in items if item["sla_state"]==sla_state]
+    return sorted(items,key=lambda x:x["priority_score"],reverse=True)
 
 @app.post("/tickets",status_code=201)
 def create_ticket(data:TicketIn):
