@@ -9,7 +9,16 @@ from pydantic import BaseModel, Field
 DB=Path(os.getenv("SIGNALDESK_DB",str(Path(__file__).resolve().parent.parent/"signaldesk.db")))
 DB.parent.mkdir(parents=True,exist_ok=True)
 app=FastAPI(title="SignalDesk API",version="1.0.0",description="Persistent service request intake, assignment and SLA triage API")
-app.add_middleware(CORSMiddleware,allow_origins=["*"],allow_methods=["*"],allow_headers=["*"])
+CORS_ORIGINS = [origin.strip() for origin in os.getenv("SIGNALDESK_CORS_ORIGINS", "http://localhost:3000,http://127.0.0.1:3000").split(",") if origin.strip()]
+if "*" in CORS_ORIGINS:
+    raise RuntimeError("SIGNALDESK_CORS_ORIGINS must list explicit origins; wildcard CORS is not allowed")
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=CORS_ORIGINS,
+    allow_credentials=True,
+    allow_methods=["GET", "POST", "PATCH", "PUT", "DELETE", "OPTIONS"],
+    allow_headers=["Authorization", "Content-Type", "X-Request-ID"],
+)
 def db():
     c=sqlite3.connect(DB);c.row_factory=sqlite3.Row;return c
 
