@@ -15,6 +15,9 @@ Open `index.html` in a browser for the dashboard. Start the API from this folder
 ## CORS configuration
 Copy `.env.example` to `.env` and set `ROUTEPILOT_CORS_ORIGINS` to the exact frontend origin(s), comma-separated. Do not use a wildcard. The default is for local development only. For public hosting, place the API behind a TLS reverse proxy and keep the container port private.
 
+## Health checks
+The API exposes `/health` for process liveness and `/ready` for database readiness. Docker uses the readiness endpoint for its container health check.
+
 ## Production architecture direction
 A commercial deployment requires authenticated users, organization/tenant isolation, role permissions, PostgreSQL with migrations, tested backups and restore, HTTPS, monitoring, and operational runbooks. Real driver GPS requires a signed-in driver, vehicle assignment, explicit browser location permission and an active foreground web session. Browser web apps cannot guarantee continuous background GPS after the page is closed or suspended; reliable background tracking requires a suitable native app or dedicated device integration. Location access, consent, retention, role permissions, document templates and jurisdiction-specific requirements must be designed before production use.
 
