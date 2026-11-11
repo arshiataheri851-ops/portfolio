@@ -16,6 +16,10 @@ Open http://127.0.0.1:8001 and interactive docs at http://127.0.0.1:8001/docs.
 From the SignalDesk project root: `docker compose up --build`.
 The database is persisted in the `signaldesk_data` Docker volume.
 
+## Health and readiness
+- `GET /health` — process liveness
+- `GET /ready` — verifies that the configured SQLite database is reachable; returns HTTP 503 if it is unavailable
+
 ## Main workflows
 - `GET /tickets` — list and filter by status, queue, priority, SLA risk and text query
 - `POST /tickets` — create a ticket with a due date
