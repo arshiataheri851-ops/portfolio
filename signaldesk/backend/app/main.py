@@ -2,10 +2,10 @@ from datetime import datetime, timezone, timedelta
 from pathlib import Path
 import sqlite3
 import os
-from fastapi import FastAPI, HTTPException, Query
+from fastapi import FastAPI, HTTPException, Query, Depends
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel, Field
-from app.security import initialize_auth
+from app.security import initialize_auth, authenticate, issue_token, require_roles
 
 DB=Path(os.getenv("SIGNALDESK_DB",str(Path(__file__).resolve().parent.parent/"signaldesk.db")))
 DB.parent.mkdir(parents=True,exist_ok=True)
@@ -38,6 +38,22 @@ def init():
             ("SD-1044","Invite link expired","Accounts","Growth","Medium","open",None,now.isoformat(),(now+timedelta(minutes=24)).isoformat())]
             c.executemany("INSERT INTO tickets VALUES(?,?,?,?,?,?,?,?,?)",rows)
 init()
+
+class LoginIn(BaseModel):
+    email: str = Field(min_length=3, max_length=320)
+    password: str = Field(min_length=1, max_length=256)
+
+@app.post("/auth/login")
+def login(data: LoginIn):
+    with db() as c:
+        user = authenticate(c, data.email, data.password)
+    if not user:
+        raise HTTPException(status_code=401, detail="Invalid email or password")
+    return {"access_token": issue_token(user), "token_type": "bearer", "expires_in": 1800}
+
+@app.get("/auth/me")
+def who_am_i(user=Depends(require_roles("admin","manager","agent","dispatcher","driver","viewer"))):
+    return {"id": user["id"], "email": user["email"], "organization_id": user["organization_id"], "role": user["role"]}
 
 class TicketIn(BaseModel):
     id:str=Field(min_length=3,max_length=40,pattern="^[A-Za-z0-9_-]+$")
@@ -78,7 +94,7 @@ def readiness():
         raise HTTPException(status_code=503, detail="Database unavailable")
     return {"status": "ready", "service": "signaldesk-api", "database": "sqlite"}
 
-@app.get("/tickets")
+@app.get("/tickets", dependencies=[Depends(require_roles("admin","manager","agent","viewer"))])
 def list_tickets(status:str|None=Query(None),queue:str|None=Query(None),priority:str|None=Query(None),sla_state:str|None=Query(None),q:str|None=Query(None)):
     clauses=[];values=[]
     for key,value in (("status",status),("queue",queue),("priority",priority)):
@@ -93,7 +109,7 @@ def list_tickets(status:str|None=Query(None),queue:str|None=Query(None),priority
         items=[item for item in items if item["sla_state"]==sla_state]
     return sorted(items,key=lambda x:x["priority_score"],reverse=True)
 
-@app.post("/tickets",status_code=201)
+@app.post("/tickets",status_code=201, dependencies=[Depends(require_roles("admin","manager","agent"))])
 def create_ticket(data:TicketIn):
     if data.priority not in {"Low","Medium","High"}: raise HTTPException(422,"Priority must be Low, Medium or High")
     with db() as c:
@@ -103,7 +119,7 @@ def create_ticket(data:TicketIn):
         row=c.execute("SELECT * FROM tickets WHERE id=?",(data.id,)).fetchone()
     return serialize(row)
 
-@app.patch("/tickets/{ticket_id}/assign")
+@app.patch("/tickets/{ticket_id}/assign", dependencies=[Depends(require_roles("admin","manager","agent"))])
 def assign(ticket_id:str,data:AssignmentIn):
     with db() as c:
         cur=c.execute("UPDATE tickets SET assignee=? WHERE id=? AND status!='resolved'",(data.assignee,ticket_id))
@@ -113,7 +129,7 @@ def assign(ticket_id:str,data:AssignmentIn):
         c.execute("INSERT INTO ticket_events(ticket_id,event_type,actor,details,created_at) VALUES(?,?,?,?,?)",(ticket_id,"assigned",data.assignee,f"Assigned to {data.assignee}",datetime.now(timezone.utc).isoformat()))
         return serialize(c.execute("SELECT * FROM tickets WHERE id=?",(ticket_id,)).fetchone())
 
-@app.patch("/tickets/{ticket_id}/status")
+@app.patch("/tickets/{ticket_id}/status", dependencies=[Depends(require_roles("admin","manager","agent"))])
 def set_status(ticket_id:str,data:StatusIn):
     if data.status not in {"open","in_progress","resolved"}:raise HTTPException(422,"Unsupported status")
     with db() as c:
@@ -123,7 +139,7 @@ def set_status(ticket_id:str,data:StatusIn):
         c.execute("INSERT INTO ticket_events(ticket_id,event_type,actor,details,created_at) VALUES(?,?,?,?,?)",(ticket_id,"status_changed","system",f"{before['status']} -> {data.status}",datetime.now(timezone.utc).isoformat()))
         return serialize(c.execute("SELECT * FROM tickets WHERE id=?",(ticket_id,)).fetchone())
 
-@app.get("/tickets/{ticket_id}/events")
+@app.get("/tickets/{ticket_id}/events", dependencies=[Depends(require_roles("admin","manager","agent","viewer"))])
 def ticket_events(ticket_id: str, limit: int = Query(default=100, ge=1, le=500)):
     with db() as c:
         if not c.execute("SELECT 1 FROM tickets WHERE id=?", (ticket_id,)).fetchone():
@@ -135,7 +151,7 @@ def ticket_events(ticket_id: str, limit: int = Query(default=100, ge=1, le=500))
     return [dict(row) for row in rows]
 
 
-@app.get("/analytics/summary")
+@app.get("/analytics/summary", dependencies=[Depends(require_roles("admin","manager","agent","viewer"))])
 def summary():
     with db() as c:
         rows=c.execute("SELECT * FROM tickets").fetchall()
