@@ -56,10 +56,13 @@ def initialize_auth(connection: sqlite3.Connection) -> None:
                  datetime.now(timezone.utc).isoformat()))
 
 
-def authenticate(connection: sqlite3.Connection, email: str, password: str):
+def authenticate(connection: sqlite3.Connection, organization_name: str, email: str, password: str):
+    # Email addresses are unique per organization, not globally; login must identify the tenant.
     row = connection.execute(
-        "SELECT id,organization_id,email,password_hash,role,active FROM users WHERE email=?",
-        (email.strip().lower(),)).fetchone()
+        """SELECT u.id,u.organization_id,u.email,u.password_hash,u.role,u.active
+           FROM users u JOIN organizations o ON o.id=u.organization_id
+           WHERE o.name=? AND u.email=?""",
+        (organization_name.strip(), email.strip().lower())).fetchone()
     if not row:
         # Perform a dummy hash verification to reduce account-enumeration timing differences.
         try:
