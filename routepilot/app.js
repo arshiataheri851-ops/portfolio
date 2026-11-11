@@ -16,6 +16,15 @@ async function loadDeliveries(){
   }catch(error){console.error(error);document.querySelector("#jobs").innerHTML="<tr><td colspan='7'>API unavailable. Start the RoutePilot backend and refresh.</td></tr>";}
 }
 async function recordProof(button){
+  const picker=document.createElement("input");picker.type="file";picker.accept="image/jpeg,image/png,application/pdf";picker.capture="environment";picker.hidden=true;document.body.appendChild(picker);picker.click();
+  await new Promise(resolve=>picker.addEventListener("change",resolve,{once:true}));
+  const file=picker.files[0];picker.remove();if(!file)return;
+  const recipient_name=prompt("Name of the person receiving the delivery:");if(!recipient_name)return;
+  const form=new FormData();form.append("recipient_name",recipient_name);form.append("file",file);form.append("note",prompt("Delivery note (optional):")||"");
+  try{const response=await fetch(API+"/deliveries/"+encodeURIComponent(button.dataset.proof)+"/proof/upload",{method:"POST",body:form});const data=await response.json();if(!response.ok)throw Error(data.detail||"Could not upload proof");await loadDeliveries();}
+  catch(error){alert(error.message);}
+  return;
+  /* legacy metadata-only flow retained below for backwards compatibility */
   const recipient_name=prompt("Name of the person receiving the delivery:");
   if(!recipient_name)return;
   const note=prompt("Delivery note (optional):")||"";
@@ -37,3 +46,30 @@ document.querySelector("#generate").addEventListener("click",async()=>{
   }catch(error){button.textContent="Start API to generate note";}
 });
 loadDeliveries();
+
+
+let gpsWatchId=null;
+const gpsStart=document.querySelector("#gpsStart");
+const gpsStop=document.querySelector("#gpsStop");
+const gpsStatus=document.querySelector("#gpsStatus");
+if(gpsStart&&gpsStop){
+  gpsStart.addEventListener("click",()=>{
+    if(!("geolocation" in navigator)){gpsStatus.textContent="This browser does not support geolocation.";return;}
+    if(!window.isSecureContext && location.hostname!=="localhost" && location.hostname!=="127.0.0.1"){gpsStatus.textContent="GPS requires HTTPS (or localhost).";return;}
+    gpsStatus.textContent="Waiting for location permission…";
+    gpsWatchId=navigator.geolocation.watchPosition(async position=>{
+      const vehicle=document.querySelector("#gpsVehicle").value;
+      try{
+        const response=await fetch(API+"/vehicles/"+encodeURIComponent(vehicle)+"/positions",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({latitude:position.coords.latitude,longitude:position.coords.longitude,recorded_at:new Date(position.timestamp).toISOString()})});
+        if(!response.ok)throw Error("GPS update rejected by API");
+        gpsStatus.textContent="Location sent · "+new Date(position.timestamp).toLocaleTimeString();
+      }catch(error){gpsStatus.textContent=error.message;}
+    },error=>{gpsStatus.textContent=error.message;},{enableHighAccuracy:true,maximumAge:10000,timeout:20000});
+    gpsStart.disabled=true;gpsStop.disabled=false;
+  });
+  gpsStop.addEventListener("click",()=>{
+    if(gpsWatchId!==null)navigator.geolocation.clearWatch(gpsWatchId);
+    gpsWatchId=null;gpsStart.disabled=false;gpsStop.disabled=true;gpsStatus.textContent="Location sharing stopped.";
+  });
+  window.addEventListener("pagehide",()=>{if(gpsWatchId!==null)navigator.geolocation.clearWatch(gpsWatchId);});
+}
