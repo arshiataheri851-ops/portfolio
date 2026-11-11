@@ -2,6 +2,8 @@ from datetime import datetime, timezone, timedelta
 from pathlib import Path
 import sqlite3
 import os
+import psycopg
+from app.database import connect as open_database, is_postgres
 from fastapi import FastAPI, HTTPException, Query, Depends
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel, Field
@@ -21,9 +23,12 @@ app.add_middleware(
     allow_headers=["Authorization", "Content-Type", "X-Request-ID"],
 )
 def db():
-    c=sqlite3.connect(DB);c.row_factory=sqlite3.Row;return c
+    return open_database(DB)
 
 def init():
+    if is_postgres():
+        # PostgreSQL schema is managed exclusively by Alembic migrations.
+        return
     with db() as c:
         c.execute("""CREATE TABLE IF NOT EXISTS tickets(id TEXT PRIMARY KEY,title TEXT NOT NULL,queue TEXT NOT NULL,account_tier TEXT NOT NULL,priority TEXT NOT NULL,status TEXT NOT NULL DEFAULT 'open',assignee TEXT,created_at TEXT NOT NULL,due_at TEXT NOT NULL)""")
         c.execute("""CREATE TABLE IF NOT EXISTS ticket_events(id INTEGER PRIMARY KEY AUTOINCREMENT,ticket_id TEXT NOT NULL,event_type TEXT NOT NULL,actor TEXT NOT NULL,details TEXT NOT NULL,created_at TEXT NOT NULL,FOREIGN KEY(ticket_id) REFERENCES tickets(id))""")
@@ -102,9 +107,9 @@ def readiness():
     try:
         with db() as c:
             c.execute("SELECT 1").fetchone()
-    except sqlite3.Error:
+    except Exception:
         raise HTTPException(status_code=503, detail="Database unavailable")
-    return {"status": "ready", "service": "signaldesk-api", "database": "sqlite"}
+    return {"status": "ready", "service": "signaldesk-api", "database": "postgresql" if is_postgres() else "sqlite"}
 
 @app.get("/tickets")
 def list_tickets(status:str|None=Query(None),queue:str|None=Query(None),priority:str|None=Query(None),sla_state:str|None=Query(None),q:str|None=Query(None),user=Depends(require_roles("admin","manager","agent","viewer"))):
@@ -126,7 +131,7 @@ def create_ticket(data:TicketIn,user=Depends(require_roles("admin","manager","ag
     with db() as c:
         try:
             c.execute("INSERT INTO tickets(id,title,queue,account_tier,priority,status,assignee,created_at,due_at,organization_id) VALUES(?,?,?,?,?,'open',NULL,?,?,?)",(data.id,data.title,data.queue,data.account_tier,data.priority,datetime.now(timezone.utc).isoformat(),data.due_at.isoformat(),org))
-        except sqlite3.IntegrityError: raise HTTPException(409,"Ticket ID already exists")
+        except (sqlite3.IntegrityError, psycopg.IntegrityError): raise HTTPException(409,"Ticket ID already exists")
         c.execute("INSERT INTO ticket_events(ticket_id,event_type,actor,details,created_at,organization_id) VALUES(?,?,?,?,?,?)",(data.id,"created",user["email"],"Ticket created",datetime.now(timezone.utc).isoformat(),org))
         row=c.execute("SELECT * FROM tickets WHERE id=? AND organization_id=?",(data.id,org)).fetchone()
     return serialize(row)
