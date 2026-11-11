@@ -28,15 +28,26 @@ def init():
         c.execute("""CREATE TABLE IF NOT EXISTS tickets(id TEXT PRIMARY KEY,title TEXT NOT NULL,queue TEXT NOT NULL,account_tier TEXT NOT NULL,priority TEXT NOT NULL,status TEXT NOT NULL DEFAULT 'open',assignee TEXT,created_at TEXT NOT NULL,due_at TEXT NOT NULL)""")
         c.execute("""CREATE TABLE IF NOT EXISTS ticket_events(id INTEGER PRIMARY KEY AUTOINCREMENT,ticket_id TEXT NOT NULL,event_type TEXT NOT NULL,actor TEXT NOT NULL,details TEXT NOT NULL,created_at TEXT NOT NULL,FOREIGN KEY(ticket_id) REFERENCES tickets(id))""")
         initialize_auth(c)
-        if c.execute("SELECT COUNT(*) FROM tickets").fetchone()[0]==0:
-            now=datetime.now(timezone.utc)
-            rows=[
-            ("SD-1048","Payment confirmation delayed","Checkout","Enterprise","High","open",None,now.isoformat(),(now+timedelta(minutes=12)).isoformat()),
-            ("SD-1047","Update billing contact details","Billing","Standard","Medium","open",None,now.isoformat(),(now+timedelta(hours=3)).isoformat()),
-            ("SD-1046","Webhook events not received","Integrations","Enterprise","High","open",None,now.isoformat(),(now+timedelta(minutes=8)).isoformat()),
-            ("SD-1045","Export monthly usage report","Reporting","Standard","Low","open",None,now.isoformat(),(now+timedelta(days=1)).isoformat()),
-            ("SD-1044","Invite link expired","Accounts","Growth","Medium","open",None,now.isoformat(),(now+timedelta(minutes=24)).isoformat())]
-            c.executemany("INSERT INTO tickets VALUES(?,?,?,?,?,?,?,?,?)",rows)
+        for table in ("tickets", "ticket_events"):
+            columns = {row["name"] for row in c.execute("PRAGMA table_info(" + table + ")")}
+            if "organization_id" not in columns:
+                c.execute("ALTER TABLE " + table + " ADD COLUMN organization_id TEXT")
+        orgs=c.execute("SELECT id FROM organizations ORDER BY created_at").fetchall()
+        if len(orgs)==1:
+            org_id=orgs[0]["id"]
+            for table in ("tickets","ticket_events"):
+                c.execute("UPDATE " + table + " SET organization_id=? WHERE organization_id IS NULL",(org_id,))
+            if c.execute("SELECT COUNT(*) FROM tickets WHERE organization_id=?",(org_id,)).fetchone()[0]==0:
+                now=datetime.now(timezone.utc)
+                rows=[
+                ("SD-1048","Payment confirmation delayed","Checkout","Enterprise","High","open",None,now.isoformat(),(now+timedelta(minutes=12)).isoformat(),org_id),
+                ("SD-1047","Update billing contact details","Billing","Standard","Medium","open",None,now.isoformat(),(now+timedelta(hours=3)).isoformat(),org_id),
+                ("SD-1046","Webhook events not received","Integrations","Enterprise","High","open",None,now.isoformat(),(now+timedelta(minutes=8)).isoformat(),org_id),
+                ("SD-1045","Export monthly usage report","Reporting","Standard","Low","open",None,now.isoformat(),(now+timedelta(days=1)).isoformat(),org_id),
+                ("SD-1044","Invite link expired","Accounts","Growth","Medium","open",None,now.isoformat(),(now+timedelta(minutes=24)).isoformat(),org_id)]
+                c.executemany("INSERT INTO tickets(id,title,queue,account_tier,priority,status,assignee,created_at,due_at,organization_id) VALUES(?,?,?,?,?,?,?,?,?,?)",rows)
+        for table in ("tickets","ticket_events"):
+            c.execute("CREATE INDEX IF NOT EXISTS idx_" + table + "_organization ON " + table + "(organization_id)")
 init()
 
 class LoginIn(BaseModel):
