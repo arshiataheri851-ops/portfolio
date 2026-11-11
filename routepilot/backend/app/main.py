@@ -5,6 +5,7 @@ import os
 from fastapi import FastAPI, HTTPException, Query
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel, Field
+from app.security import initialize_auth
 
 DB = Path(os.getenv("ROUTEPILOT_DB", str(Path(__file__).resolve().parent.parent / "routepilot.db")))
 DB.parent.mkdir(parents=True, exist_ok=True)
@@ -34,6 +35,7 @@ def init_db():
         CREATE TABLE IF NOT EXISTS deliveries(id TEXT PRIMARY KEY, recipient TEXT NOT NULL, address TEXT NOT NULL, route_id TEXT NOT NULL, vehicle_id TEXT, status TEXT NOT NULL DEFAULT 'scheduled', eta TEXT, created_at TEXT NOT NULL);
         CREATE TABLE IF NOT EXISTS proofs(id INTEGER PRIMARY KEY AUTOINCREMENT, delivery_id TEXT NOT NULL, recipient_name TEXT NOT NULL, method TEXT NOT NULL, note TEXT DEFAULT '', captured_at TEXT NOT NULL, FOREIGN KEY(delivery_id) REFERENCES deliveries(id));
         """)
+        initialize_auth(c)
         if c.execute("SELECT COUNT(*) FROM vehicles").fetchone()[0] == 0:
             c.executemany("INSERT INTO vehicles(id,label,status) VALUES(?,?,?)", [("VAN-12","Van 12","on_route"),("VAN-08","Van 08","on_route"),("VAN-21","Van 21","delayed")])
         if c.execute("SELECT COUNT(*) FROM deliveries").fetchone()[0] == 0:
