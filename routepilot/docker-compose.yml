@@ -3,7 +3,9 @@ services:
     build: ./backend
     ports:
       - "8000:8000"
+    environment:
+      ROUTEPILOT_DB: /data/routepilot.db
     volumes:
-      - routepilot_data:/app
+      - routepilot_data:/data
 volumes:
   routepilot_data:
