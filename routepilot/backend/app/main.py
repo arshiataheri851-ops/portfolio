@@ -1,11 +1,13 @@
 from datetime import datetime, timezone
 from pathlib import Path
 import sqlite3
+import os
 from fastapi import FastAPI, HTTPException, Query
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel, Field
 
-DB = Path(__file__).resolve().parent.parent / "routepilot.db"
+DB = Path(os.getenv("ROUTEPILOT_DB", str(Path(__file__).resolve().parent.parent / "routepilot.db")))
+DB.parent.mkdir(parents=True, exist_ok=True)
 app = FastAPI(title="RoutePilot API", version="1.0.0", description="Fleet, GPS telemetry, delivery and proof-of-delivery API")
 app.add_middleware(CORSMiddleware, allow_origins=["*"], allow_methods=["*"], allow_headers=["*"])
 
