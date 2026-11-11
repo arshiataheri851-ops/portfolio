@@ -63,3 +63,8 @@ def test_delivery_requires_proof_before_delivered_status():
     assert client.get(f"/deliveries/{delivery_id}/proofs").json()
     allowed = client.patch(f"/deliveries/{delivery_id}/status", json={"status": "delivered"})
     assert allowed.status_code == 200
+
+def test_readiness_checks_database():
+    response = client.get("/ready")
+    assert response.status_code == 200
+    assert response.json()["status"] == "ready"
