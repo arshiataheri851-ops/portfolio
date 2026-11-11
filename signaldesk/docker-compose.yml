@@ -3,7 +3,9 @@ services:
     build: ./backend
     ports:
       - "8001:8000"
+    environment:
+      SIGNALDESK_DB: /data/signaldesk.db
     volumes:
-      - signaldesk_data:/app/data
+      - signaldesk_data:/data
 volumes:
   signaldesk_data:
