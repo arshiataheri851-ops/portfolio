@@ -112,3 +112,31 @@ def test_tenant_cannot_read_or_update_another_organizations_ticket():
     assert client.get("/tickets/SD-OTHER/events").status_code == 404
     assert all(row["id"] != "SD-OTHER" for row in client.get("/tickets").json())
     assert client.patch("/tickets/SD-OTHER/status", json={"status":"resolved"}).status_code == 404
+
+
+def test_outbound_email_requires_ticket_and_records_audit(monkeypatch):
+    from app import main as signaldesk_main
+    monkeypatch.setattr(signaldesk_main, "send_email", lambda recipient, subject, body: "<test-message-id>")
+    response = client.post("/notifications/email", json={
+        "ticket_id": "SD-1048", "recipient": "customer@example.test",
+        "subject": "Update", "body": "We are reviewing your request."
+    })
+    assert response.status_code == 202
+    assert response.json()["message_id"] == "<test-message-id>"
+    missing = client.post("/notifications/email", json={
+        "ticket_id": "SD-NOT-FOUND", "recipient": "customer@example.test",
+        "subject": "Update", "body": "Hello"
+    })
+    assert missing.status_code == 404
+
+
+def test_outbound_email_returns_503_when_smtp_is_not_configured(monkeypatch):
+    from app import main as signaldesk_main
+    def unavailable(*args, **kwargs):
+        raise RuntimeError("Outbound email is not configured")
+    monkeypatch.setattr(signaldesk_main, "send_email", unavailable)
+    response = client.post("/notifications/email", json={
+        "ticket_id": "SD-1048", "recipient": "customer@example.test",
+        "subject": "Update", "body": "Hello"
+    })
+    assert response.status_code == 503
