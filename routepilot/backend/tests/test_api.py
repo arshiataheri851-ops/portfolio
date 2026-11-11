@@ -90,3 +90,11 @@ def test_business_api_rejects_missing_authentication():
     finally:
         if override is not None:
             app.dependency_overrides[current_user] = override
+
+def test_tenant_cannot_read_or_update_another_organizations_delivery():
+    with connect() as c:
+        c.execute("INSERT OR IGNORE INTO organizations(id,name,created_at) VALUES('other-org','Other Org','2026-01-02T00:00:00+00:00')")
+        c.execute("INSERT OR IGNORE INTO deliveries(id,recipient,address,route_id,vehicle_id,status,eta,created_at,organization_id) VALUES('DL-OTHER','Private recipient','Private address','R-OTHER',NULL,'scheduled',NULL,'2026-01-02T00:00:00+00:00','other-org')")
+    assert client.get("/deliveries/DL-OTHER/note").status_code == 404
+    assert all(row["id"] != "DL-OTHER" for row in client.get("/deliveries").json())
+    assert client.patch("/deliveries/DL-OTHER/status", json={"status":"cancelled"}).status_code == 404
