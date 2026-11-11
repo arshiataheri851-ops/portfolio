@@ -33,6 +33,18 @@ def init_db():
         # Alembic owns the schema; this step only provisions the configured bootstrap admin.
         with connect() as c:
             initialize_auth(c)
+            org = c.execute("SELECT id FROM organizations WHERE name=?", (os.getenv("BOOTSTRAP_ORG_NAME", "").strip(),)).fetchone()
+            if org:
+                org_id = org["id"]
+                if not c.execute("SELECT 1 FROM vehicles WHERE organization_id=? LIMIT 1", (org_id,)).fetchone():
+                    c.executemany("INSERT INTO vehicles(id,label,status,organization_id) VALUES(?,?,?,?)", [
+                        ("VAN-12","Van 12","on_route",org_id),("VAN-08","Van 08","on_route",org_id),("VAN-21","Van 21","delayed",org_id)])
+                if not c.execute("SELECT 1 FROM deliveries WHERE organization_id=? LIMIT 1", (org_id,)).fetchone():
+                    now = datetime.now(timezone.utc).isoformat()
+                    c.executemany("INSERT INTO deliveries(id,recipient,address,route_id,vehicle_id,status,eta,created_at,organization_id) VALUES(?,?,?,?,?,?,?,?,?)", [
+                        ("DL-2084","Northstar Studio","Berlin Mitte","R-204","VAN-12","in_transit","2026-11-11T14:25:00+01:00",now,org_id),
+                        ("DL-2083","Market Hall","Berlin Kreuzberg","R-204","VAN-12","delivered","2026-11-11T13:50:00+01:00",now,org_id),
+                        ("DL-2082","Westend Supply","Berlin Westend","R-211","VAN-21","attention","2026-11-11T14:05:00+01:00",now,org_id)])
         return
     with connect() as c:
         c.executescript("""
