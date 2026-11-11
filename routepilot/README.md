@@ -1,12 +1,12 @@
-# RoutePilot — Fleet & Delivery Operations Demonstrator
+# RoutePilot — Fleet & Delivery Operations MVP
 
-RoutePilot is a front-end portfolio demonstrator for a last-mile delivery workflow. It combines a fleet overview, illustrative GPS route map, delivery status table, proof-of-delivery states and a generated delivery-note preview.
+RoutePilot is an executable fleet and delivery workflow MVP with a FastAPI + SQLite backend and browser dashboard. It supports vehicle records, submitted GPS telemetry, delivery creation/status, proof-of-delivery metadata and delivery-note preview.
 
 ## Included
 - Responsive fleet operations dashboard
 - Simulated vehicle positions and route paths (not connected to real GPS devices)
-- Delivery table with status filtering
-- Delivery-note preview for a completed stop
+- Delivery table with status filtering and API-backed delivery creation
+- Proof-of-delivery metadata capture and delivery-note preview
 - Explicit sample-data and non-legal-document notices
 
 ## Run
@@ -16,7 +16,7 @@ Open `index.html` in a browser. No build step or external API is required.
 A real deployment could use a mobile driver app or GPS device gateway, an authenticated event-ingestion API, a geospatial store, a dispatch service, a document-rendering service, object storage and an auditable proof-of-delivery workflow. Location access, consent, retention, role permissions, document templates and jurisdiction-specific requirements must be designed before production use.
 
 ## Important scope
-This repository is a concept demonstrator with illustrative data. It does not connect to live vehicles, issue legally valid transport documents, collect signatures or provide a real dispatch service. No operational performance claims are made.
+The API and dashboard are usable as a local MVP. Initial records are sample data. It does not connect to live vehicle hardware, store uploaded photographs or biometric signatures, issue legally valid transport documents, or include authentication/tenant isolation. Do not expose it publicly or enter real personal data until those controls are implemented.
 
 Built as an ERYNDEX portfolio project.
 
