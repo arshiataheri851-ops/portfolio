@@ -106,66 +106,64 @@ def readiness():
         raise HTTPException(status_code=503, detail="Database unavailable")
     return {"status": "ready", "service": "signaldesk-api", "database": "sqlite"}
 
-@app.get("/tickets", dependencies=[Depends(require_roles("admin","manager","agent","viewer"))])
-def list_tickets(status:str|None=Query(None),queue:str|None=Query(None),priority:str|None=Query(None),sla_state:str|None=Query(None),q:str|None=Query(None)):
-    clauses=[];values=[]
+@app.get("/tickets")
+def list_tickets(status:str|None=Query(None),queue:str|None=Query(None),priority:str|None=Query(None),sla_state:str|None=Query(None),q:str|None=Query(None),user=Depends(require_roles("admin","manager","agent","viewer"))):
+    org=user["organization_id"]; clauses=["organization_id=?"]; values=[org]
     for key,value in (("status",status),("queue",queue),("priority",priority)):
-        if value: clauses.append(f"{key}=?");values.append(value)
-    if q: clauses.append("(id LIKE ? OR title LIKE ? OR queue LIKE ?)");values += [f"%{q}%"]*3
-    sql="SELECT * FROM tickets"+(" WHERE "+" AND ".join(clauses) if clauses else "")
+        if value: clauses.append(key+"=?"); values.append(value)
+    if q: clauses.append("(id LIKE ? OR title LIKE ? OR queue LIKE ?)"); values += [f"%{q}%"]*3
+    sql="SELECT * FROM tickets WHERE "+" AND ".join(clauses)
     with db() as c: rows=c.execute(sql,values).fetchall()
     items=[serialize(r) for r in rows]
     if sla_state:
-        if sla_state not in {"at_risk","safe"}:
-            raise HTTPException(422,"sla_state must be at_risk or safe")
+        if sla_state not in {"at_risk","safe"}: raise HTTPException(422,"sla_state must be at_risk or safe")
         items=[item for item in items if item["sla_state"]==sla_state]
     return sorted(items,key=lambda x:x["priority_score"],reverse=True)
 
-@app.post("/tickets",status_code=201, dependencies=[Depends(require_roles("admin","manager","agent"))])
-def create_ticket(data:TicketIn):
-    if data.priority not in {"Low","Medium","High"}: raise HTTPException(422,"Priority must be Low, Medium or High")
+@app.post("/tickets",status_code=201)
+def create_ticket(data:TicketIn,user=Depends(require_roles("admin","manager","agent"))):
+    org=user["organization_id"]
     with db() as c:
-        try:c.execute("INSERT INTO tickets VALUES(?,?,?,?,?,'open',NULL,?,?)",(data.id,data.title,data.queue,data.account_tier,data.priority,datetime.now(timezone.utc).isoformat(),data.due_at.isoformat()))
-        except sqlite3.IntegrityError:raise HTTPException(409,"Ticket ID already exists")
-        c.execute("INSERT INTO ticket_events(ticket_id,event_type,actor,details,created_at) VALUES(?,?,?,?,?)",(data.id,"created","system","Ticket created",datetime.now(timezone.utc).isoformat()))
-        row=c.execute("SELECT * FROM tickets WHERE id=?",(data.id,)).fetchone()
+        try:
+            c.execute("INSERT INTO tickets(id,title,queue,account_tier,priority,status,assignee,created_at,due_at,organization_id) VALUES(?,?,?,?,?,'open',NULL,?,?,?)",(data.id,data.title,data.queue,data.account_tier,data.priority,datetime.now(timezone.utc).isoformat(),data.due_at.isoformat(),org))
+        except sqlite3.IntegrityError: raise HTTPException(409,"Ticket ID already exists")
+        c.execute("INSERT INTO ticket_events(ticket_id,event_type,actor,details,created_at,organization_id) VALUES(?,?,?,?,?,?)",(data.id,"created",user["email"],"Ticket created",datetime.now(timezone.utc).isoformat(),org))
+        row=c.execute("SELECT * FROM tickets WHERE id=? AND organization_id=?",(data.id,org)).fetchone()
     return serialize(row)
 
-@app.patch("/tickets/{ticket_id}/assign", dependencies=[Depends(require_roles("admin","manager","agent"))])
-def assign(ticket_id:str,data:AssignmentIn):
+@app.patch("/tickets/{ticket_id}/assign")
+def assign(ticket_id:str,data:AssignmentIn,user=Depends(require_roles("admin","manager","agent"))):
+    org=user["organization_id"]
     with db() as c:
-        cur=c.execute("UPDATE tickets SET assignee=? WHERE id=? AND status!='resolved'",(data.assignee,ticket_id))
-        if not cur.rowcount:
-            if not c.execute("SELECT 1 FROM tickets WHERE id=?",(ticket_id,)).fetchone():raise HTTPException(404,"Ticket not found")
-            raise HTTPException(409,"Resolved tickets cannot be assigned")
-        c.execute("INSERT INTO ticket_events(ticket_id,event_type,actor,details,created_at) VALUES(?,?,?,?,?)",(ticket_id,"assigned",data.assignee,f"Assigned to {data.assignee}",datetime.now(timezone.utc).isoformat()))
-        return serialize(c.execute("SELECT * FROM tickets WHERE id=?",(ticket_id,)).fetchone())
+        ticket=c.execute("SELECT status FROM tickets WHERE id=? AND organization_id=?",(ticket_id,org)).fetchone()
+        if not ticket: raise HTTPException(404,"Ticket not found")
+        if ticket["status"]=="resolved": raise HTTPException(409,"Resolved tickets cannot be assigned")
+        c.execute("UPDATE tickets SET assignee=? WHERE id=? AND organization_id=?",(data.assignee,ticket_id,org))
+        c.execute("INSERT INTO ticket_events(ticket_id,event_type,actor,details,created_at,organization_id) VALUES(?,?,?,?,?,?)",(ticket_id,"assigned",user["email"],"Assigned to "+data.assignee,datetime.now(timezone.utc).isoformat(),org))
+        return serialize(c.execute("SELECT * FROM tickets WHERE id=? AND organization_id=?",(ticket_id,org)).fetchone())
 
-@app.patch("/tickets/{ticket_id}/status", dependencies=[Depends(require_roles("admin","manager","agent"))])
-def set_status(ticket_id:str,data:StatusIn):
-    if data.status not in {"open","in_progress","resolved"}:raise HTTPException(422,"Unsupported status")
+@app.patch("/tickets/{ticket_id}/status")
+def set_status(ticket_id:str,data:StatusIn,user=Depends(require_roles("admin","manager","agent"))):
+    if data.status not in {"open","in_progress","resolved"}: raise HTTPException(422,"Unsupported status")
+    org=user["organization_id"]
     with db() as c:
-        before=c.execute("SELECT status FROM tickets WHERE id=?",(ticket_id,)).fetchone()
-        if not before:raise HTTPException(404,"Ticket not found")
-        cur=c.execute("UPDATE tickets SET status=? WHERE id=?",(data.status,ticket_id))
-        c.execute("INSERT INTO ticket_events(ticket_id,event_type,actor,details,created_at) VALUES(?,?,?,?,?)",(ticket_id,"status_changed","system",f"{before['status']} -> {data.status}",datetime.now(timezone.utc).isoformat()))
-        return serialize(c.execute("SELECT * FROM tickets WHERE id=?",(ticket_id,)).fetchone())
+        before=c.execute("SELECT status FROM tickets WHERE id=? AND organization_id=?",(ticket_id,org)).fetchone()
+        if not before: raise HTTPException(404,"Ticket not found")
+        c.execute("UPDATE tickets SET status=? WHERE id=? AND organization_id=?",(data.status,ticket_id,org))
+        c.execute("INSERT INTO ticket_events(ticket_id,event_type,actor,details,created_at,organization_id) VALUES(?,?,?,?,?,?)",(ticket_id,"status_changed",user["email"],before["status"]+" -> "+data.status,datetime.now(timezone.utc).isoformat(),org))
+        return serialize(c.execute("SELECT * FROM tickets WHERE id=? AND organization_id=?",(ticket_id,org)).fetchone())
 
-@app.get("/tickets/{ticket_id}/events", dependencies=[Depends(require_roles("admin","manager","agent","viewer"))])
-def ticket_events(ticket_id: str, limit: int = Query(default=100, ge=1, le=500)):
+@app.get("/tickets/{ticket_id}/events")
+def ticket_events(ticket_id:str,limit:int=Query(default=100,ge=1,le=500),user=Depends(require_roles("admin","manager","agent","viewer"))):
+    org=user["organization_id"]
     with db() as c:
-        if not c.execute("SELECT 1 FROM tickets WHERE id=?", (ticket_id,)).fetchone():
-            raise HTTPException(404, "Ticket not found")
-        rows = c.execute(
-            "SELECT id,ticket_id,event_type,actor,details,created_at FROM ticket_events WHERE ticket_id=? ORDER BY id DESC LIMIT ?",
-            (ticket_id, limit),
-        ).fetchall()
+        if not c.execute("SELECT 1 FROM tickets WHERE id=? AND organization_id=?",(ticket_id,org)).fetchone(): raise HTTPException(404,"Ticket not found")
+        rows=c.execute("SELECT id,ticket_id,event_type,actor,details,created_at FROM ticket_events WHERE ticket_id=? AND organization_id=? ORDER BY id DESC LIMIT ?",(ticket_id,org,limit)).fetchall()
     return [dict(row) for row in rows]
 
-
-@app.get("/analytics/summary", dependencies=[Depends(require_roles("admin","manager","agent","viewer"))])
-def summary():
-    with db() as c:
-        rows=c.execute("SELECT * FROM tickets").fetchall()
+@app.get("/analytics/summary")
+def summary(user=Depends(require_roles("admin","manager","agent","viewer"))):
+    org=user["organization_id"]
+    with db() as c: rows=c.execute("SELECT * FROM tickets WHERE organization_id=?",(org,)).fetchall()
     items=[serialize(r) for r in rows]
     return {"total":len(items),"open":sum(x["status"]=="open" for x in items),"at_risk":sum(x["sla_state"]=="at_risk" for x in items),"resolved":sum(x["status"]=="resolved" for x in items),"by_queue":{q:sum(x["queue"]==q for x in items) for q in sorted({x["queue"] for x in items})}}
