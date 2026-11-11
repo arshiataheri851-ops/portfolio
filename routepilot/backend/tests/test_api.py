@@ -14,9 +14,9 @@ client = TestClient(app)
 
 # Deterministic tenant fixture; CI intentionally has no bootstrap secrets.
 with connect() as _db:
-    _db.execute("INSERT OR IGNORE INTO organizations(id,name,created_at) VALUES('test-org','Test Org','2026-01-01T00:00:00+00:00')")
-    _db.execute("INSERT OR IGNORE INTO vehicles(id,label,status,organization_id) VALUES('VAN-12','Van 12','on_route','test-org')")
-    _db.execute("INSERT OR IGNORE INTO deliveries(id,recipient,address,route_id,vehicle_id,status,eta,created_at,organization_id) VALUES('DL-2083','Market Hall','Berlin Kreuzberg','R-204','VAN-12','delivered',NULL,'2026-01-01T00:00:00+00:00','test-org')")
+    _db.execute("INSERT INTO organizations(id,name,created_at) VALUES('test-org','Test Org','2026-01-01T00:00:00+00:00') ON CONFLICT DO NOTHING")
+    _db.execute("INSERT INTO vehicles(id,label,status,organization_id) VALUES('VAN-12','Van 12','on_route','test-org') ON CONFLICT DO NOTHING")
+    _db.execute("INSERT INTO deliveries(id,recipient,address,route_id,vehicle_id,status,eta,created_at,organization_id) VALUES('DL-2083','Market Hall','Berlin Kreuzberg','R-204','VAN-12','delivered',NULL,'2026-01-01T00:00:00+00:00','test-org') ON CONFLICT DO NOTHING")
 
 
 def test_health():
@@ -93,8 +93,8 @@ def test_business_api_rejects_missing_authentication():
 
 def test_tenant_cannot_read_or_update_another_organizations_delivery():
     with connect() as c:
-        c.execute("INSERT OR IGNORE INTO organizations(id,name,created_at) VALUES('other-org','Other Org','2026-01-02T00:00:00+00:00')")
-        c.execute("INSERT OR IGNORE INTO deliveries(id,recipient,address,route_id,vehicle_id,status,eta,created_at,organization_id) VALUES('DL-OTHER','Private recipient','Private address','R-OTHER',NULL,'scheduled',NULL,'2026-01-02T00:00:00+00:00','other-org')")
+        c.execute("INSERT INTO organizations(id,name,created_at) VALUES('other-org','Other Org','2026-01-02T00:00:00+00:00') ON CONFLICT DO NOTHING")
+        c.execute("INSERT INTO deliveries(id,recipient,address,route_id,vehicle_id,status,eta,created_at,organization_id) VALUES('DL-OTHER','Private recipient','Private address','R-OTHER',NULL,'scheduled',NULL,'2026-01-02T00:00:00+00:00','other-org') ON CONFLICT DO NOTHING")
     assert client.get("/deliveries/DL-OTHER/note").status_code == 404
     assert all(row["id"] != "DL-OTHER" for row in client.get("/deliveries").json())
     assert client.patch("/deliveries/DL-OTHER/status", json={"status":"cancelled"}).status_code == 404
