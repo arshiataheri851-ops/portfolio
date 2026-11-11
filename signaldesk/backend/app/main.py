@@ -61,7 +61,20 @@ def serialize(row):
     return item
 
 @app.get("/health")
-def health(): return {"status":"ok","service":"signaldesk-api","database":"sqlite"}
+def health():
+    # Liveness only: confirms the process is responding.
+    return {"status": "ok", "service": "signaldesk-api"}
+
+
+@app.get("/ready")
+def readiness():
+    # Readiness verifies that the configured persistent database is reachable.
+    try:
+        with db() as c:
+            c.execute("SELECT 1").fetchone()
+    except sqlite3.Error:
+        raise HTTPException(status_code=503, detail="Database unavailable")
+    return {"status": "ready", "service": "signaldesk-api", "database": "sqlite"}
 
 @app.get("/tickets")
 def list_tickets(status:str|None=Query(None),queue:str|None=Query(None),priority:str|None=Query(None),sla_state:str|None=Query(None),q:str|None=Query(None)):
