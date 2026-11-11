@@ -2,6 +2,8 @@ from datetime import datetime, timezone
 from pathlib import Path
 import sqlite3
 import os
+import psycopg
+from app.database import connect as open_database, is_postgres
 from fastapi import FastAPI, HTTPException, Query, Depends
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel, Field
@@ -22,12 +24,12 @@ app.add_middleware(
 )
 
 def connect():
-    con = sqlite3.connect(DB)
-    con.row_factory = sqlite3.Row
-    con.execute("PRAGMA foreign_keys=ON")
-    return con
+    return open_database(DB)
 
 def init_db():
+    if is_postgres():
+        # PostgreSQL schema is managed exclusively by Alembic migrations.
+        return
     with connect() as c:
         c.executescript("""
         CREATE TABLE IF NOT EXISTS vehicles(id TEXT PRIMARY KEY, label TEXT NOT NULL, status TEXT NOT NULL DEFAULT 'idle');
@@ -108,9 +110,9 @@ def readiness():
     try:
         with connect() as c:
             c.execute("SELECT 1").fetchone()
-    except sqlite3.Error:
+    except Exception:
         raise HTTPException(status_code=503, detail="Database unavailable")
-    return {"status": "ready", "service": "routepilot-api", "database": "sqlite"}
+    return {"status": "ready", "service": "routepilot-api", "database": "postgresql" if is_postgres() else "sqlite"}
 
 @app.get("/vehicles")
 def vehicles(user=Depends(require_roles("admin","dispatcher","driver"))):
@@ -126,7 +128,7 @@ def create_vehicle(data: VehicleIn, user=Depends(require_roles("admin","dispatch
     org=user["organization_id"]; vehicle_id=data.label.upper().replace(" ","-")
     with connect() as c:
         try: c.execute("INSERT INTO vehicles(id,label,status,organization_id) VALUES(?,?,?,?)",(vehicle_id,data.label,data.status,org))
-        except sqlite3.IntegrityError: raise HTTPException(409,"Vehicle already exists")
+        except (sqlite3.IntegrityError, psycopg.IntegrityError): raise HTTPException(409,"Vehicle already exists")
     return {"id":vehicle_id,"label":data.label,"status":data.status}
 
 @app.post("/vehicles/{vehicle_id}/positions", status_code=201)
