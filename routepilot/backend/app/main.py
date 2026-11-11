@@ -2,10 +2,10 @@ from datetime import datetime, timezone
 from pathlib import Path
 import sqlite3
 import os
-from fastapi import FastAPI, HTTPException, Query
+from fastapi import FastAPI, HTTPException, Query, Depends
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel, Field
-from app.security import initialize_auth
+from app.security import initialize_auth, authenticate, issue_token, require_roles
 
 DB = Path(os.getenv("ROUTEPILOT_DB", str(Path(__file__).resolve().parent.parent / "routepilot.db")))
 DB.parent.mkdir(parents=True, exist_ok=True)
@@ -46,6 +46,22 @@ def init_db():
             ("DL-2082","Westend Supply","Berlin Westend","R-211","VAN-21","attention","2026-11-11T14:05:00+01:00",now)])
 init_db()
 
+class LoginIn(BaseModel):
+    email: str = Field(min_length=3, max_length=320)
+    password: str = Field(min_length=1, max_length=256)
+
+@app.post("/auth/login")
+def login(data: LoginIn):
+    with connect() as c:
+        user = authenticate(c, data.email, data.password)
+    if not user:
+        raise HTTPException(status_code=401, detail="Invalid email or password")
+    return {"access_token": issue_token(user), "token_type": "bearer", "expires_in": 1800}
+
+@app.get("/auth/me")
+def who_am_i(user=Depends(require_roles("admin","manager","agent","dispatcher","driver","viewer"))):
+    return {"id": user["id"], "email": user["email"], "organization_id": user["organization_id"], "role": user["role"]}
+
 class VehicleIn(BaseModel):
     label: str = Field(min_length=2, max_length=80)
     status: str = Field(default="idle", pattern="^(idle|on_route|delayed|maintenance)$")
@@ -83,20 +99,20 @@ def readiness():
         raise HTTPException(status_code=503, detail="Database unavailable")
     return {"status": "ready", "service": "routepilot-api", "database": "sqlite"}
 
-@app.get("/vehicles")
+@app.get("/vehicles", dependencies=[Depends(require_roles("admin","dispatcher","driver"))])
 def vehicles():
     with connect() as c:
         rows=c.execute("""SELECT v.*, p.latitude,p.longitude,p.recorded_at FROM vehicles v LEFT JOIN positions p ON p.id=(SELECT MAX(id) FROM positions WHERE vehicle_id=v.id) ORDER BY v.id""").fetchall()
         return [dict(r) for r in rows]
 
-@app.post("/vehicles", status_code=201)
+@app.post("/vehicles", status_code=201, dependencies=[Depends(require_roles("admin","dispatcher"))])
 def create_vehicle(data: VehicleIn):
     with connect() as c:
         try: c.execute("INSERT INTO vehicles(id,label,status) VALUES(?,?,?)",(data.label.upper().replace(" ","-"),data.label,data.status))
         except sqlite3.IntegrityError: raise HTTPException(409,"Vehicle already exists")
     return {"id":data.label.upper().replace(" ","-"),"label":data.label,"status":data.status}
 
-@app.post("/vehicles/{vehicle_id}/positions", status_code=201)
+@app.post("/vehicles/{vehicle_id}/positions", status_code=201, dependencies=[Depends(require_roles("admin","dispatcher","driver"))])
 def record_position(vehicle_id: str, data: PositionIn):
     stamp=(data.recorded_at or datetime.now(timezone.utc)).isoformat()
     with connect() as c:
@@ -104,7 +120,7 @@ def record_position(vehicle_id: str, data: PositionIn):
         cur=c.execute("INSERT INTO positions(vehicle_id,latitude,longitude,recorded_at) VALUES(?,?,?,?)",(vehicle_id,data.latitude,data.longitude,stamp))
     return {"id":cur.lastrowid,"vehicle_id":vehicle_id,"latitude":data.latitude,"longitude":data.longitude,"recorded_at":stamp}
 
-@app.get("/vehicles/{vehicle_id}/positions")
+@app.get("/vehicles/{vehicle_id}/positions", dependencies=[Depends(require_roles("admin","dispatcher","driver"))])
 def position_history(vehicle_id: str, limit: int = Query(default=100, ge=1, le=1000)):
     with connect() as c:
         if not c.execute("SELECT 1 FROM vehicles WHERE id=?", (vehicle_id,)).fetchone():
@@ -116,7 +132,7 @@ def position_history(vehicle_id: str, limit: int = Query(default=100, ge=1, le=1
     return [dict(row) for row in rows]
 
 
-@app.get("/deliveries/{delivery_id}/proofs")
+@app.get("/deliveries/{delivery_id}/proofs", dependencies=[Depends(require_roles("admin","dispatcher","driver"))])
 def delivery_proofs(delivery_id: str):
     with connect() as c:
         if not c.execute("SELECT 1 FROM deliveries WHERE id=?", (delivery_id,)).fetchone():
@@ -125,14 +141,14 @@ def delivery_proofs(delivery_id: str):
     return [dict(row) for row in rows]
 
 
-@app.get("/deliveries")
+@app.get("/deliveries", dependencies=[Depends(require_roles("admin","dispatcher","driver"))])
 def deliveries(status: str | None = Query(default=None)):
     with connect() as c:
         sql="SELECT d.*, (SELECT COUNT(*) FROM proofs p WHERE p.delivery_id=d.id) AS proof_count FROM deliveries d"
         rows=c.execute(sql+" WHERE status=? ORDER BY created_at DESC" if status else sql+" ORDER BY created_at DESC",(status,) if status else ()).fetchall()
         return [dict(r) for r in rows]
 
-@app.post("/deliveries", status_code=201)
+@app.post("/deliveries", status_code=201, dependencies=[Depends(require_roles("admin","dispatcher"))])
 def create_delivery(data: DeliveryIn):
     with connect() as c:
         if data.vehicle_id and not c.execute("SELECT 1 FROM vehicles WHERE id=?",(data.vehicle_id,)).fetchone():
@@ -141,7 +157,7 @@ def create_delivery(data: DeliveryIn):
         except sqlite3.IntegrityError: raise HTTPException(409,"Delivery ID already exists")
     return {"id":data.id,"status":"scheduled"}
 
-@app.patch("/deliveries/{delivery_id}/status")
+@app.patch("/deliveries/{delivery_id}/status", dependencies=[Depends(require_roles("admin","dispatcher","driver"))])
 def update_delivery(delivery_id: str, data: StatusIn):
     with connect() as c:
         if data.status == "delivered" and not c.execute("SELECT 1 FROM proofs WHERE delivery_id=?",(delivery_id,)).fetchone():
@@ -150,7 +166,7 @@ def update_delivery(delivery_id: str, data: StatusIn):
         if not cur.rowcount: raise HTTPException(404,"Delivery not found")
     return {"id":delivery_id,"status":data.status}
 
-@app.post("/deliveries/{delivery_id}/proof", status_code=201)
+@app.post("/deliveries/{delivery_id}/proof", status_code=201, dependencies=[Depends(require_roles("admin","dispatcher","driver"))])
 def add_proof(delivery_id: str, data: ProofIn):
     with connect() as c:
         if not c.execute("SELECT 1 FROM deliveries WHERE id=?",(delivery_id,)).fetchone(): raise HTTPException(404,"Delivery not found")
@@ -159,7 +175,7 @@ def add_proof(delivery_id: str, data: ProofIn):
         row=c.execute("SELECT * FROM proofs WHERE id=?",(cur.lastrowid,)).fetchone()
     return dict(row)
 
-@app.get("/deliveries/{delivery_id}/note")
+@app.get("/deliveries/{delivery_id}/note", dependencies=[Depends(require_roles("admin","dispatcher","driver"))])
 def delivery_note(delivery_id: str):
     with connect() as c:
         d=c.execute("SELECT * FROM deliveries WHERE id=?",(delivery_id,)).fetchone()
