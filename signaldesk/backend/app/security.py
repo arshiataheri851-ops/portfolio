@@ -61,7 +61,7 @@ def initialize_auth(connection: sqlite3.Connection) -> None:
                                   (org_id, email)).fetchone()
         if not user:
             connection.execute(
-                "INSERT INTO users(id,organization_id,email,password_hash,role,active,created_at) VALUES(?,?,?,?,1,?)",
+                "INSERT INTO users(id,organization_id,email,password_hash,role,active,created_at) VALUES(?,?,?,?,?,1,?)",
                 (str(uuid4()), org_id, email, _hasher.hash(password), "admin",
                  datetime.now(timezone.utc).isoformat())
             )
