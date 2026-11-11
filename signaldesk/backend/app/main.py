@@ -27,7 +27,9 @@ def db():
 
 def init():
     if is_postgres():
-        # PostgreSQL schema is managed exclusively by Alembic migrations.
+        # Alembic owns the schema; this step only provisions the configured bootstrap admin.
+        with db() as c:
+            initialize_auth(c)
         return
     with db() as c:
         c.execute("""CREATE TABLE IF NOT EXISTS tickets(id TEXT PRIMARY KEY,title TEXT NOT NULL,queue TEXT NOT NULL,account_tier TEXT NOT NULL,priority TEXT NOT NULL,status TEXT NOT NULL DEFAULT 'open',assignee TEXT,created_at TEXT NOT NULL,due_at TEXT NOT NULL)""")
