@@ -11,6 +11,8 @@ from argon2.exceptions import VerifyMismatchError, VerificationError
 from fastapi import Depends, HTTPException
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 
+from .database import connect as open_database
+
 _hasher = PasswordHasher()
 _bearer = HTTPBearer(auto_error=False)
 ALGORITHM = "HS256"
