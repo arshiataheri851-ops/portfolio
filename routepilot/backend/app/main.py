@@ -36,14 +36,26 @@ def init_db():
         CREATE TABLE IF NOT EXISTS proofs(id INTEGER PRIMARY KEY AUTOINCREMENT, delivery_id TEXT NOT NULL, recipient_name TEXT NOT NULL, method TEXT NOT NULL, note TEXT DEFAULT '', captured_at TEXT NOT NULL, FOREIGN KEY(delivery_id) REFERENCES deliveries(id));
         """)
         initialize_auth(c)
-        if c.execute("SELECT COUNT(*) FROM vehicles").fetchone()[0] == 0:
-            c.executemany("INSERT INTO vehicles(id,label,status) VALUES(?,?,?)", [("VAN-12","Van 12","on_route"),("VAN-08","Van 08","on_route"),("VAN-21","Van 21","delayed")])
-        if c.execute("SELECT COUNT(*) FROM deliveries").fetchone()[0] == 0:
-            now=datetime.now(timezone.utc).isoformat()
-            c.executemany("INSERT INTO deliveries(id,recipient,address,route_id,vehicle_id,status,eta,created_at) VALUES(?,?,?,?,?,?,?,?)", [
-            ("DL-2084","Northstar Studio","Berlin Mitte","R-204","VAN-12","in_transit","2026-11-11T14:25:00+01:00",now),
-            ("DL-2083","Market Hall","Berlin Kreuzberg","R-204","VAN-12","delivered","2026-11-11T13:50:00+01:00",now),
-            ("DL-2082","Westend Supply","Berlin Westend","R-211","VAN-21","attention","2026-11-11T14:05:00+01:00",now)])
+        for table in ("vehicles", "positions", "deliveries", "proofs"):
+            columns = {row["name"] for row in c.execute("PRAGMA table_info(" + table + ")")}
+            if "organization_id" not in columns:
+                c.execute("ALTER TABLE " + table + " ADD COLUMN organization_id TEXT")
+        orgs = c.execute("SELECT id FROM organizations ORDER BY created_at").fetchall()
+        if len(orgs) == 1:
+            org_id = orgs[0]["id"]
+            for table in ("vehicles", "positions", "deliveries", "proofs"):
+                c.execute("UPDATE " + table + " SET organization_id=? WHERE organization_id IS NULL", (org_id,))
+            if c.execute("SELECT COUNT(*) FROM vehicles WHERE organization_id=?", (org_id,)).fetchone()[0] == 0:
+                c.executemany("INSERT INTO vehicles(id,label,status,organization_id) VALUES(?,?,?,?)",
+                    [("VAN-12","Van 12","on_route",org_id),("VAN-08","Van 08","on_route",org_id),("VAN-21","Van 21","delayed",org_id)])
+            if c.execute("SELECT COUNT(*) FROM deliveries WHERE organization_id=?", (org_id,)).fetchone()[0] == 0:
+                now=datetime.now(timezone.utc).isoformat()
+                c.executemany("INSERT INTO deliveries(id,recipient,address,route_id,vehicle_id,status,eta,created_at,organization_id) VALUES(?,?,?,?,?,?,?,?,?)", [
+                ("DL-2084","Northstar Studio","Berlin Mitte","R-204","VAN-12","in_transit","2026-11-11T14:25:00+01:00",now,org_id),
+                ("DL-2083","Market Hall","Berlin Kreuzberg","R-204","VAN-12","delivered","2026-11-11T13:50:00+01:00",now,org_id),
+                ("DL-2082","Westend Supply","Berlin Westend","R-211","VAN-21","attention","2026-11-11T14:05:00+01:00",now,org_id)])
+        for table in ("vehicles", "positions", "deliveries", "proofs"):
+            c.execute("CREATE INDEX IF NOT EXISTS idx_" + table + "_organization ON " + table + "(organization_id)")
 init_db()
 
 class LoginIn(BaseModel):
