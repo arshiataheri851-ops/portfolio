@@ -98,7 +98,7 @@ def current_user(credentials: HTTPAuthorizationCredentials | None = Depends(_bea
         raise HTTPException(status_code=401, detail="Invalid or expired access token",
                             headers={"WWW-Authenticate": "Bearer"})
     # Re-read user state from the DB on every request so deactivation takes effect immediately.
-    db_path = os.getenv("SIGNALDESK_DB", "")
+    db_path = os.getenv("SIGNALDESK_DB", str(__import__("pathlib").Path(__file__).resolve().parent.parent / "signaldesk.db"))
     if not db_path:
         raise HTTPException(status_code=503, detail="Authentication database is not configured")
     with sqlite3.connect(db_path) as connection:
