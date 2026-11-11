@@ -10,16 +10,19 @@ SignalDesk is an executable service-desk MVP with a FastAPI + SQLite backend and
 - Queue distribution visualization
 - Transparent rule-based prioritization explanation
 
-## Run
-Open `index.html` in a modern browser. No build step or backend is required.
+## Run locally
+Open `index.html` in a modern browser. Start the API from this folder with `docker compose up --build`; the API is bound to `127.0.0.1:8001`.
 
-## Production architecture direction
-A production version could integrate authenticated intake APIs, a ticketing database, event-driven SLA timers, role-based assignment, audit events and analytics. Any AI-assisted triage should be separately evaluated, explainable, permission-aware and subject to human review.
+## CORS configuration
+Copy `.env.example` to `.env` and set `SIGNALDESK_CORS_ORIGINS` to the exact frontend origin(s), comma-separated. Do not use a wildcard. The default is for local development only. For public hosting, place the API behind a TLS reverse proxy and keep the container port private.
+
+## Production requirements
+A commercial deployment requires authenticated users, organization/tenant isolation, role permissions, PostgreSQL with migrations, tested backups and restore, HTTPS, monitoring, and operational runbooks. Email intake and outbound notifications require a configured provider, verified sender domain, credentials stored outside source control, retry handling and delivery logs. Any AI-assisted triage must be separately evaluated, explainable, permission-aware and subject to human review.
 
 ## Important scope
-Initial records are illustrative. New tickets, assignments and status changes persist in SQLite when the API is running. SLA risk and priority are transparent deterministic rules, not AI predictions. The MVP does not yet include authentication, roles, tenant isolation, email intake or notifications; do not expose it publicly or store real customer data before these controls are added.
+This is an MVP, not a production-ready service desk. Initial records are illustrative. New tickets, assignments and status changes persist in SQLite when the API is running. SLA risk and priority are transparent deterministic rules, not AI predictions. Authentication, roles, tenant isolation, email intake and notifications are not yet implemented. Do not expose it publicly or store real customer data before these controls are added and tested.
 
 Built as an ERYNDEX portfolio project.
 
-## Run the working API backend
-A FastAPI + SQLite backend is included. Start it with Docker from this folder using `docker compose up --build`, or follow [backend setup](backend/README.md). The dashboard reads and assigns tickets through the API at `http://127.0.0.1:8001`. Interactive API documentation is available at `/docs`.
+## Backend
+See [backend setup](backend/README.md). Interactive API documentation is available at `/docs` while the local API is running.
