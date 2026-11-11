@@ -16,6 +16,10 @@ Open the API at http://127.0.0.1:8000 and interactive docs at http://127.0.0.1:8
 From the RoutePilot project root: `docker compose up --build`.
 The database is persisted in the `routepilot_data` Docker volume.
 
+## Health and readiness
+- `GET /health` — process liveness
+- `GET /ready` — verifies that the configured SQLite database is reachable; returns HTTP 503 if it is unavailable
+
 ## Main workflows
 - `GET /vehicles` — list fleet and latest submitted position
 - `POST /vehicles` — add a vehicle
