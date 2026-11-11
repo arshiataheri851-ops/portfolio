@@ -4,8 +4,10 @@ import sqlite3
 import os
 import psycopg
 from app.database import connect as open_database, is_postgres
-from fastapi import FastAPI, HTTPException, Query, Depends
+from fastapi import FastAPI, HTTPException, Query, Depends, UploadFile, File, Form
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import FileResponse
+from uuid import uuid4
 from pydantic import BaseModel, Field
 from app.security import initialize_auth, authenticate, issue_token, require_roles
 
@@ -40,6 +42,10 @@ def init_db():
         CREATE TABLE IF NOT EXISTS proofs(id INTEGER PRIMARY KEY AUTOINCREMENT, delivery_id TEXT NOT NULL, recipient_name TEXT NOT NULL, method TEXT NOT NULL, note TEXT DEFAULT '', captured_at TEXT NOT NULL, FOREIGN KEY(delivery_id) REFERENCES deliveries(id));
         """)
         initialize_auth(c)
+        proof_columns = {row["name"] for row in c.execute("PRAGMA table_info(proofs)")}
+        for name, declaration in (("storage_key", "TEXT"), ("original_filename", "TEXT"), ("content_type", "TEXT"), ("size_bytes", "INTEGER")):
+            if name not in proof_columns:
+                c.execute("ALTER TABLE proofs ADD COLUMN " + name + " " + declaration)
         for table in ("vehicles", "positions", "deliveries", "proofs"):
             columns = {row["name"] for row in c.execute("PRAGMA table_info(" + table + ")")}
             if "organization_id" not in columns:
@@ -194,6 +200,74 @@ def add_proof(delivery_id: str, data: ProofIn, user=Depends(require_roles("admin
         c.execute("UPDATE deliveries SET status='delivered' WHERE id=? AND organization_id=?",(delivery_id,org))
         row=c.execute("SELECT * FROM proofs WHERE id=? AND organization_id=?",(cur.lastrowid,org)).fetchone()
     return dict(row)
+
+
+@app.post("/deliveries/{delivery_id}/proof/upload", status_code=201)
+async def upload_proof(
+    delivery_id: str,
+    recipient_name: str = Form(min_length=2, max_length=120),
+    note: str = Form(default="", max_length=2000),
+    file: UploadFile = File(...),
+    user=Depends(require_roles("admin", "dispatcher", "driver")),
+):
+    """Store a tenant-scoped proof document. Only JPEG, PNG and PDF are accepted."""
+    org = user["organization_id"]
+    allowed = {"image/jpeg": ".jpg", "image/png": ".png", "application/pdf": ".pdf"}
+    content_type = (file.content_type or "").lower()
+    if content_type not in allowed:
+        raise HTTPException(415, "Only JPEG, PNG and PDF proof files are accepted")
+    payload = await file.read(10 * 1024 * 1024 + 1)
+    if not payload or len(payload) > 10 * 1024 * 1024:
+        raise HTTPException(413, "Proof file must be between 1 byte and 10 MB")
+    signatures = {
+        "image/jpeg": payload.startswith(bytes.fromhex("ffd8ff")),
+        "image/png": payload.startswith(bytes.fromhex("89504e470d0a1a0a")),
+        "application/pdf": payload.startswith(b"%PDF-"),
+    }
+    if not signatures[content_type]:
+        raise HTTPException(415, "File content does not match its declared type")
+    with connect() as c:
+        if not c.execute("SELECT 1 FROM deliveries WHERE id=? AND organization_id=?", (delivery_id, org)).fetchone():
+            raise HTTPException(404, "Delivery not found")
+    storage_root = Path(os.getenv("ROUTEPILOT_PROOF_STORAGE", "/data/proofs"))
+    tenant_dir = storage_root / str(org)
+    tenant_dir.mkdir(parents=True, exist_ok=True)
+    storage_key = uuid4().hex + allowed[content_type]
+    destination = tenant_dir / storage_key
+    destination.write_bytes(payload)
+    stamp = datetime.now(timezone.utc).isoformat()
+    try:
+        with connect() as c:
+            cur = c.execute(
+                "INSERT INTO proofs(delivery_id,recipient_name,method,note,captured_at,organization_id,storage_key,original_filename,content_type,size_bytes) VALUES(?,?,?,?,?,?,?,?,?,?)",
+                (delivery_id, recipient_name, "photo" if content_type.startswith("image/") else "manual",
+                 note, stamp, org, storage_key, Path(file.filename or "proof").name[:255], content_type, len(payload)),
+            )
+            row = c.execute("SELECT * FROM proofs WHERE id=? AND organization_id=?", (cur.lastrowid, org)).fetchone()
+            c.execute("UPDATE deliveries SET status='delivered' WHERE id=? AND organization_id=?", (delivery_id, org))
+    except Exception:
+        destination.unlink(missing_ok=True)
+        raise
+    return dict(row)
+
+
+@app.get("/deliveries/{delivery_id}/proofs/{proof_id}/file")
+def download_proof(delivery_id: str, proof_id: int, user=Depends(require_roles("admin", "dispatcher", "driver"))):
+    org = user["organization_id"]
+    with connect() as c:
+        row = c.execute(
+            "SELECT storage_key,original_filename,content_type FROM proofs WHERE id=? AND delivery_id=? AND organization_id=?",
+            (proof_id, delivery_id, org),
+        ).fetchone()
+    if not row or not row["storage_key"]:
+        raise HTTPException(404, "Proof file not found")
+    root = (Path(os.getenv("ROUTEPILOT_PROOF_STORAGE", "/data/proofs")) / str(org)).resolve()
+    path = (root / row["storage_key"]).resolve()
+    if path.parent != root or not path.is_file():
+        raise HTTPException(404, "Proof file not found")
+    return FileResponse(path, media_type=row["content_type"] or "application/octet-stream",
+                        filename=row["original_filename"] or "proof", content_disposition_type="attachment")
+
 
 @app.get("/deliveries/{delivery_id}/note")
 def delivery_note(delivery_id: str, user=Depends(require_roles("admin","dispatcher","driver"))):
