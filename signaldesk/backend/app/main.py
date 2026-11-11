@@ -16,6 +16,7 @@ def db():
 def init():
     with db() as c:
         c.execute("""CREATE TABLE IF NOT EXISTS tickets(id TEXT PRIMARY KEY,title TEXT NOT NULL,queue TEXT NOT NULL,account_tier TEXT NOT NULL,priority TEXT NOT NULL,status TEXT NOT NULL DEFAULT 'open',assignee TEXT,created_at TEXT NOT NULL,due_at TEXT NOT NULL)""")
+        c.execute("""CREATE TABLE IF NOT EXISTS ticket_events(id INTEGER PRIMARY KEY AUTOINCREMENT,ticket_id TEXT NOT NULL,event_type TEXT NOT NULL,actor TEXT NOT NULL,details TEXT NOT NULL,created_at TEXT NOT NULL,FOREIGN KEY(ticket_id) REFERENCES tickets(id))""")
         if c.execute("SELECT COUNT(*) FROM tickets").fetchone()[0]==0:
             now=datetime.now(timezone.utc)
             rows=[
@@ -28,11 +29,11 @@ def init():
 init()
 
 class TicketIn(BaseModel):
-    id:str
+    id:str=Field(min_length=3,max_length=40,pattern="^[A-Za-z0-9_-]+$")
     title:str=Field(min_length=3,max_length=200)
-    queue:str
-    account_tier:str="Standard"
-    priority:str="Medium"
+    queue:str=Field(min_length=2,max_length=80)
+    account_tier:str=Field(default="Standard",pattern="^(Standard|Growth|Enterprise)$")
+    priority:str=Field(default="Medium",pattern="^(Low|Medium|High)$")
     due_at:datetime
 class AssignmentIn(BaseModel):
     assignee:str=Field(min_length=1,max_length=100)
@@ -74,6 +75,7 @@ def create_ticket(data:TicketIn):
     with db() as c:
         try:c.execute("INSERT INTO tickets VALUES(?,?,?,?,?,'open',NULL,?,?)",(data.id,data.title,data.queue,data.account_tier,data.priority,datetime.now(timezone.utc).isoformat(),data.due_at.isoformat()))
         except sqlite3.IntegrityError:raise HTTPException(409,"Ticket ID already exists")
+        c.execute("INSERT INTO ticket_events(ticket_id,event_type,actor,details,created_at) VALUES(?,?,?,?,?)",(data.id,"created","system","Ticket created",datetime.now(timezone.utc).isoformat()))
         row=c.execute("SELECT * FROM tickets WHERE id=?",(data.id,)).fetchone()
     return serialize(row)
 
@@ -84,15 +86,30 @@ def assign(ticket_id:str,data:AssignmentIn):
         if not cur.rowcount:
             if not c.execute("SELECT 1 FROM tickets WHERE id=?",(ticket_id,)).fetchone():raise HTTPException(404,"Ticket not found")
             raise HTTPException(409,"Resolved tickets cannot be assigned")
+        c.execute("INSERT INTO ticket_events(ticket_id,event_type,actor,details,created_at) VALUES(?,?,?,?,?)",(ticket_id,"assigned",data.assignee,f"Assigned to {data.assignee}",datetime.now(timezone.utc).isoformat()))
         return serialize(c.execute("SELECT * FROM tickets WHERE id=?",(ticket_id,)).fetchone())
 
 @app.patch("/tickets/{ticket_id}/status")
 def set_status(ticket_id:str,data:StatusIn):
     if data.status not in {"open","in_progress","resolved"}:raise HTTPException(422,"Unsupported status")
     with db() as c:
+        before=c.execute("SELECT status FROM tickets WHERE id=?",(ticket_id,)).fetchone()
+        if not before:raise HTTPException(404,"Ticket not found")
         cur=c.execute("UPDATE tickets SET status=? WHERE id=?",(data.status,ticket_id))
-        if not cur.rowcount:raise HTTPException(404,"Ticket not found")
+        c.execute("INSERT INTO ticket_events(ticket_id,event_type,actor,details,created_at) VALUES(?,?,?,?,?)",(ticket_id,"status_changed","system",f"{before['status']} -> {data.status}",datetime.now(timezone.utc).isoformat()))
         return serialize(c.execute("SELECT * FROM tickets WHERE id=?",(ticket_id,)).fetchone())
+
+@app.get("/tickets/{ticket_id}/events")
+def ticket_events(ticket_id: str, limit: int = Query(default=100, ge=1, le=500)):
+    with db() as c:
+        if not c.execute("SELECT 1 FROM tickets WHERE id=?", (ticket_id,)).fetchone():
+            raise HTTPException(404, "Ticket not found")
+        rows = c.execute(
+            "SELECT id,ticket_id,event_type,actor,details,created_at FROM ticket_events WHERE ticket_id=? ORDER BY id DESC LIMIT ?",
+            (ticket_id, limit),
+        ).fetchall()
+    return [dict(row) for row in rows]
+
 
 @app.get("/analytics/summary")
 def summary():
