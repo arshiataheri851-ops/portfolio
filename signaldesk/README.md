@@ -16,6 +16,9 @@ Open `index.html` in a modern browser. Start the API from this folder with `dock
 ## CORS configuration
 Copy `.env.example` to `.env` and set `SIGNALDESK_CORS_ORIGINS` to the exact frontend origin(s), comma-separated. Do not use a wildcard. The default is for local development only. For public hosting, place the API behind a TLS reverse proxy and keep the container port private.
 
+## Health checks
+The API exposes `/health` for process liveness and `/ready` for database readiness. Docker uses the readiness endpoint for its container health check.
+
 ## Production requirements
 A commercial deployment requires authenticated users, organization/tenant isolation, role permissions, PostgreSQL with migrations, tested backups and restore, HTTPS, monitoring, and operational runbooks. Email intake and outbound notifications require a configured provider, verified sender domain, credentials stored outside source control, retry handling and delivery logs. Any AI-assisted triage must be separately evaluated, explainable, permission-aware and subject to human review.
 
