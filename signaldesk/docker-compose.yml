@@ -1,0 +1,9 @@
+services:
+  api:
+    build: ./backend
+    ports:
+      - "8001:8000"
+    volumes:
+      - signaldesk_data:/app/data
+volumes:
+  signaldesk_data:
