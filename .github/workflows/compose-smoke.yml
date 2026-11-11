@@ -34,6 +34,8 @@ jobs:
         working-directory: ${{ matrix.directory }}
     steps:
       - uses: actions/checkout@v4
+      - name: Validate dashboard JavaScript syntax
+        run: node --check app.js
       - name: Create isolated demo environment
         run: |
           cat > .env <<'EOF'
