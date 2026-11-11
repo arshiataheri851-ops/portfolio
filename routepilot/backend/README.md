@@ -1,30 +1,39 @@
 # RoutePilot API
 
-## Run locally
-```bash
+RoutePilot is a local fleet and delivery operations MVP built with FastAPI and SQLite.
+
+## Run locally (Windows CMD)
+```cmd
 cd backend
-python -m venv .venv
-# Windows: .venv\\Scripts\\activate
-# macOS/Linux: source .venv/bin/activate
-pip install -r requirements.txt
-uvicorn app.main:app --reload
+py -m venv .venv
+.venv\Scripts\activate.bat
+py -m pip install -r requirements.txt
+py -m uvicorn app.main:app --reload
 ```
-Open http://127.0.0.1:8000/docs for interactive API documentation.
+Open the API at http://127.0.0.1:8000 and interactive docs at http://127.0.0.1:8000/docs.
 
 ## Run with Docker
-From the project root: `docker compose up --build`
+From the RoutePilot project root: `docker compose up --build`.
+The database is persisted in the `routepilot_data` Docker volume.
 
-## Endpoints
-- GET /health
-- GET, POST /vehicles
-- POST /vehicles/{vehicle_id}/positions — GPS telemetry ingestion (latitude/longitude validated)
-- GET, POST /deliveries
-- PATCH /deliveries/{delivery_id}/status
-- POST /deliveries/{delivery_id}/proof
-- GET /deliveries/{delivery_id}/note — document data preview
-
-## Data and privacy
-SQLite is used for a self-contained local demo. GPS records are sample/explicitly submitted coordinates; no background device tracking exists. Production deployment requires authentication, authorization, TLS, consent and retention controls, input rate limits, audit logs and a production database. The delivery note endpoint returns structured preview data, not a legally valid transport or tax document.
+## Main workflows
+- `GET /vehicles` — list fleet and latest submitted position
+- `POST /vehicles` — add a vehicle
+- `POST /vehicles/{vehicle_id}/positions` — record a submitted GPS coordinate
+- `GET /vehicles/{vehicle_id}/positions?limit=100` — read position history
+- `GET /deliveries` — list deliveries; optional `status` filter
+- `POST /deliveries` — create a delivery and optionally associate a known vehicle
+- `PATCH /deliveries/{delivery_id}/status` — update status; delivered requires proof first
+- `POST /deliveries/{delivery_id}/proof` — record recipient/method/note and mark delivered
+- `GET /deliveries/{delivery_id}/proofs` — list proof records
+- `GET /deliveries/{delivery_id}/note` — structured document preview (not legally valid)
 
 ## Tests
-Install `pytest httpx` and run `pytest` from this directory.
+From this folder:
+```cmd
+py -m pip install -r requirements.txt
+py -m pytest -q
+```
+
+## Current limitations before customer deployment
+This is an executable MVP, not a hardened commercial deployment. It has no user authentication, role permissions, tenant isolation, live GPS hardware/mobile driver app, uploaded photo/signature storage, notification service, database migrations, backups, or jurisdiction-approved transport documents. Do not expose it to the public internet or enter real customer personal data until these controls are implemented. Configure CORS for the exact production frontend origin before deployment.
