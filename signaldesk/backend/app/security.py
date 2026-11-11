@@ -1,5 +1,6 @@
 """Authentication helpers. Configure AUTH_JWT_SECRET and bootstrap admin via secrets."""
 from datetime import datetime, timedelta, timezone
+from pathlib import Path
 import os
 import sqlite3
 from uuid import uuid4
