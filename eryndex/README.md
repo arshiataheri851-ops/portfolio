@@ -10,7 +10,7 @@ https://arshiataheri851-ops.github.io/portfolio/eryndex/
 ## Files
 - `index.html` — page structure and content
 - `assets/style.css` — responsive visual system
-- `assets/script.js` — mobile navigation and scroll progress
+- `assets/script.js` — mobile navigation and scroll progress\n\nThe homepage includes an executive profile section for Arshia Taheri, Senior AI Engineer, with experience, education, recognition and technical skills. Profile details and metrics are supplied by the profile owner and should be reviewed before formal external use.
 
 ## Before public launch
 1. The contact section uses eryndexco@gmail.com.
