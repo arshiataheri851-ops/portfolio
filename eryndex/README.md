@@ -1,4 +1,4 @@
-# ERYNDEX — Company Website
+# ERYNDEXCO — Company Website
 
 Static, responsive company website published as a subdirectory of the existing GitHub Pages portfolio repository.
 
@@ -13,7 +13,7 @@ https://arshiataheri851-ops.github.io/portfolio/eryndex/
 - `assets/script.js` — mobile navigation and scroll progress
 
 ## Before public launch
-1. Replace the placeholder email address in the contact section with a verified company mailbox.
+1. The contact section uses eryndexco@gmail.com.
 2. Have every team member approve their biography and public links.
 3. Confirm the company’s legal name, registered status, and service commitments before making legal or contractual claims.
 4. Review all project descriptions against the current repositories and keep demonstrator limitations visible.
