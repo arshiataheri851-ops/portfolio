@@ -10,7 +10,7 @@ The public company description is consistent at the brand level: ERYNDEX is pres
 ## Corrections made
 
 - Replaced the public leadership profile's unverified CV-style claims and personal contact details with a concise company-role profile in English and Persian.
-- Normalized the FarsiPulse, AtlasRAG and RelayForge source links to the projects on the linked repository's default `main` branch.
+- Normalized the source links for all five detailed case-study pages and the FarsiPulse, AtlasRAG and RelayForge homepage cards to the correct projects on the linked repository's default `main` branch.
 - Rewrote the FarsiPulse, AtlasRAG and RelayForge detailed case-study pages against their current source READMEs, including explicit technical limitations.
 - Added both leadership profile routes to the XML sitemap.
 - Corrected hosting documentation to describe Cloudflare Pages as the static frontend host and the contact Worker as a separately deployed service.
