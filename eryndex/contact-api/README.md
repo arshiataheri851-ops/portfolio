@@ -1,26 +1,41 @@
-# ERYNDEX contact API deployment
+# ERYNDEX customer request tracking API
 
-The public website is hosted on GitHub Pages, which is static hosting and cannot run a server-side form handler. This directory contains a Cloudflare Worker adapter for the contact form. **It is not deployed yet**, and the online form must not be described as live until the deployment and end-to-end test are complete.
+This Worker powers the ERYNDEX collaboration-request intake, customer tracking portal and private administration page. The code is prepared but is **not deployed or live** until the Cloudflare D1 database, Worker secrets and endpoint are configured and end-to-end tested.
 
-## Required configuration
+## Components
+- `worker.js`: creates requests, issues a reference, returns customer status/history, and provides token-protected admin list/update endpoints.
+- `migrations/0001_requests.sql`: D1 schema for requests and public status events.
+- `../requests/`: English customer tracking page.
+- `../fa/requests/`: Persian customer tracking page.
+- `../admin/`: private admin interface. It is not linked in public navigation.
 
-1. Create a Cloudflare Worker from this directory and deploy it.
-2. Set Worker variables:
-   - `ALLOWED_ORIGINS`: exact comma-separated HTTPS origins, initially `https://arshiataheri851-ops.github.io`; later add the production domain origin.
-   - `CONTACT_TO`: the mailbox that should receive inquiries (currently intended: `eryndexco@gmail.com`).
-   - `CONTACT_FROM`: a sender address on a domain verified with the email delivery provider.
-3. Add `RESEND_API_KEY` as a Worker secret, never as a source-code variable.
-4. Configure Cloudflare rate limiting and Turnstile or equivalent abuse protection before public launch. The Worker validates origin, method, content type, body size, field types and lengths, and a honeypot, but those controls alone are not sufficient against automated abuse.
-5. Set `window.ERYNDEX_CONTACT_ENDPOINT` in the website to the deployed Worker URL. Do not set it until the Worker has been deployed and tested.
-6. Test valid submissions, invalid email, oversized payload, disallowed origin, OPTIONS preflight, provider failure and successful delivery.
+## Cloudflare setup
+1. Create a D1 database named `eryndex-requests`.
+2. Replace `REPLACE_AFTER_CREATING_D1` in `wrangler.toml` with the database ID.
+3. Run `wrangler d1 migrations apply eryndex-requests --remote`.
+4. Deploy the Worker from this directory using Wrangler.
+5. Set Worker variables:
+   - `ALLOWED_ORIGINS=https://eryndex.pages.dev`
+   - `CONTACT_TO=eryndexco@gmail.com`
+   - `CONTACT_FROM=<verified sender address>`
+6. Add `RESEND_API_KEY` and a long random `ADMIN_API_TOKEN` as Worker secrets. Never commit or paste these secrets into frontend code or GitHub.
+7. Set `window.ERYNDEX_CONTACT_ENDPOINT` in `assets/config.js` to the deployed Worker URL ending in `/api/requests`.
+8. Test valid and invalid submissions, customer lookup with matching and non-matching email, admin unauthorized access, status updates, CORS, database failure and email delivery. Add Cloudflare rate limiting and Turnstile before public launch.
 
-## Data handling
+## Endpoints
+- `POST /api/requests`: validates and stores a customer request; responds with a reference such as `ERX-2026-XXXXXXXX`.
+- `POST /api/track`: requires both reference and the request email; returns customer-visible status history only.
+- `GET /api/admin/requests`: requires `Authorization: Bearer <ADMIN_API_TOKEN>`.
+- `PATCH /api/admin/requests/:id`: updates status, priority, internal note, proposal fields and customer-visible event message.
+- `GET /health`: health check.
 
-The Worker forwards the submitted name, email, optional company, selected service and project brief to the configured mailbox through the email provider. It does not intentionally persist submissions. Keep the privacy notice accurate and establish an appropriate retention policy for the receiving mailbox.
+## Status values
+`submitted`, `under_review`, `needs_information`, `proposal_sent`, `awaiting_approval`, `approved`, `in_progress`, `completed`, `declined`.
 
-## Security limitations
-
-- GitHub Pages does not let this repository set arbitrary HTTP response headers. The meta CSP on the HTML page is only a partial browser-side control; it is not equivalent to server response headers.
-- Before the production domain goes live, configure response headers at the CDN/hosting layer: Content-Security-Policy, Strict-Transport-Security (only after HTTPS is confirmed), X-Content-Type-Options, Referrer-Policy, Permissions-Policy and frame protections.
-- Enable provider-side abuse controls, monitoring and alerts. Never place API keys, database credentials or private tokens in frontend JavaScript.
-- Do not collect sensitive personal information or confidential project secrets in the public form.
+## Security and operational notes
+- The admin token is a shared-secret MVP control, not a full user/role system. Restrict the admin page further with Cloudflare Access before production use; rotate the token if exposed.
+- Customer lookup requires both reference and email. Do not expose request IDs or admin notes in customer responses.
+- Configure rate limiting and Turnstile/other abuse controls at the edge before public launch.
+- The current email notification is best-effort; database persistence is authoritative. Configure delivery monitoring and retries before relying on email as the sole alert channel.
+- Define a privacy notice, retention period and deletion process appropriate to the business and applicable law.
+- No secrets, paid services, DNS records or custom domains are configured by this code change.
