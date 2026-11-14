@@ -16,3 +16,5 @@ img,svg,video{max-width:100%;height:auto}
 .work-card,.person-card{min-width:0}
 @media(max-width:600px){.header{padding-inline:5vw}.menu-toggle{min-width:44px;min-height:44px;align-items:center;justify-content:center}.hero{padding-inline:7vw}.hero-bottom{gap:10px;flex-wrap:wrap}.hero-bottom span{white-space:nowrap}.contact-form{width:100%}.contact-form input,.contact-form select,.contact-form textarea{font-size:16px}.contact-form .btn{justify-content:space-between;width:100%}.work-card>p,.person-card>p:not(.role){min-height:0}.person-card{padding:22px}}
 @media(prefers-reduced-motion:reduce){*,*::before,*::after{animation-duration:.01ms!important;animation-iteration-count:1!important;scroll-behavior:auto!important}}
+
+@media(max-width:600px){.header nav{top:70px;right:0;left:0}.header .menu-toggle{display:flex;flex-direction:column;gap:6px;padding:10px;background:transparent;border:0}.header .menu-toggle span{width:23px;height:1px;background:var(--text)}}
