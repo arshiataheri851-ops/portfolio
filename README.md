@@ -23,3 +23,14 @@ Project pages:
 - https://arshiataheri851-ops.github.io/portfolio/instagram-downloader/
 
 Replace the project descriptions and add source links only after verifying the details of each project.
+
+## ERYNDEX — Company Website
+
+The repository also contains the bilingual ERYNDEX company website and engineering portfolio.
+
+- [Open the ERYNDEX website source](eryndex/)
+- [Company profile](eryndex/COMPANY_PROFILE.md)
+- [Portfolio index and project status](eryndex/PORTFOLIO_INDEX.md)
+- [Website deployment and maintenance notes](eryndex/README.md)
+
+Public website: https://eryndex.pages.dev/
