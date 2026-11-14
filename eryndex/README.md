@@ -1,10 +1,10 @@
 # ERYNDEX — Company Website
 
-Responsive bilingual (English/Persian) company website and portfolio.
+Responsive bilingual (English/Persian) company website and engineering portfolio, published on Cloudflare Pages.
 
 ## Preview
-- English: https://arshiataheri851-ops.github.io/portfolio/eryndex/
-- Persian: https://arshiataheri851-ops.github.io/portfolio/eryndex/fa/
+- English: https://eryndex.pages.dev/
+- Persian: https://eryndex.pages.dev/fa/
 
 ## Structure
 - `index.html` — English homepage
