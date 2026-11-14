@@ -56,3 +56,6 @@ img,svg,video{max-width:100%;height:auto}
 
 /* Keep detail-page navigation usable on narrow screens; homepage uses its own collapsible menu. */
 @media(max-width:600px){.header nav.subpage-nav{display:flex;position:static;inset:auto;max-width:68%;padding:0;background:transparent;border:0;flex-direction:row;flex-wrap:wrap;align-items:center;justify-content:flex-end;gap:6px 12px;font-size:10px}.header nav.subpage-nav .nav-cta{align-self:auto;padding:6px 8px}}
+
+/* Prominent profile link inside the founder's leadership card */
+.profile-card-link{display:flex;justify-content:space-between;align-items:center;gap:16px;margin:20px 0 18px;padding:14px 16px;border:1px solid var(--mint);color:var(--mint);font-size:10px;letter-spacing:.12em;text-decoration:none;transition:background .2s ease,color .2s ease}.profile-card-link:hover{background:var(--mint);color:#09121d}.profile-card-link span{font-size:16px}
