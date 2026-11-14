@@ -23,7 +23,7 @@ export default {
   const name = str(data.name,80), email = str(data.email,254), company = str(data.company || "",100);
   const service = str(data.service,100), message = str(data.message,3000), honeypot = str(data.website || "",200);
   if (honeypot) return respond({ok:true});
-  if (!name || name.length < 2 || !email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email) || !service || !message || message.length < 20) return respond({error:"Please check the submitted fields"},400);
+  if (data.consent !== "true" || !name || name.length < 2 || !email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email) || !service || !message || message.length < 20) return respond({error:"Please check the submitted fields"},400);
   if (!env.RESEND_API_KEY || !env.CONTACT_TO || !env.CONTACT_FROM) return respond({error:"Service is not configured"},503);
   const textBody = [
    "New ERYNDEX project inquiry","",
