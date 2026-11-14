@@ -1,4 +1,4 @@
-# ERYNDEXCO — Company Website
+# ERYNDEX — Company Website
 
 Static, responsive company website published as a subdirectory of the existing GitHub Pages portfolio repository.
 
