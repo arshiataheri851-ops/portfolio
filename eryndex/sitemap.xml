@@ -2,6 +2,8 @@
 <urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
   <url><loc>https://eryndex.pages.dev/</loc></url>
   <url><loc>https://eryndex.pages.dev/fa/</loc></url>
+  <url><loc>https://eryndex.pages.dev/profile/</loc></url>
+  <url><loc>https://eryndex.pages.dev/fa/profile/</loc></url>
   <url><loc>https://eryndex.pages.dev/services/backend-api/</loc></url>
   <url><loc>https://eryndex.pages.dev/services/applied-ai/</loc></url>
   <url><loc>https://eryndex.pages.dev/services/rag-knowledge/</loc></url>
