@@ -1,12 +1,47 @@
 services:
+  postgres:
+    image: postgres:16-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: routepilot
+      POSTGRES_USER: ${POSTGRES_USER:-routepilot}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?Set POSTGRES_PASSWORD in .env}
+    volumes:
+      - routepilot_postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-routepilot} -d routepilot"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+
+  migrate:
+    build: ./backend
+    command: ["alembic", "upgrade", "head"]
+    environment:
+      DATABASE_URL: postgresql+psycopg://${POSTGRES_USER:-routepilot}:${POSTGRES_PASSWORD}@postgres:5432/routepilot
+    depends_on:
+      postgres:
+        condition: service_healthy
+    restart: "no"
+
   api:
     build: ./backend
+    restart: unless-stopped
     ports:
       - "127.0.0.1:8000:8000"
-    environment:
-      ROUTEPILOT_DB: /data/routepilot.db
-      ROUTEPILOT_CORS_ORIGINS: ${ROUTEPILOT_CORS_ORIGINS:-http://localhost:3000}
     volumes:
-      - routepilot_data:/data
+      - routepilot_proof_files:/data/proofs
+    environment:
+      DATABASE_URL: postgresql+psycopg://${POSTGRES_USER:-routepilot}:${POSTGRES_PASSWORD}@postgres:5432/routepilot
+      ROUTEPILOT_CORS_ORIGINS: ${ROUTEPILOT_CORS_ORIGINS:-http://localhost:5500,http://127.0.0.1:5500}
+      AUTH_JWT_SECRET: ${AUTH_JWT_SECRET:?Set AUTH_JWT_SECRET in .env}
+      BOOTSTRAP_ORG_NAME: ${BOOTSTRAP_ORG_NAME:?Set BOOTSTRAP_ORG_NAME in .env}
+      BOOTSTRAP_ADMIN_EMAIL: ${BOOTSTRAP_ADMIN_EMAIL:?Set BOOTSTRAP_ADMIN_EMAIL in .env}
+      BOOTSTRAP_ADMIN_PASSWORD: ${BOOTSTRAP_ADMIN_PASSWORD:?Set BOOTSTRAP_ADMIN_PASSWORD in .env}
+    depends_on:
+      migrate:
+        condition: service_completed_successfully
+
 volumes:
-  routepilot_data:
+  routepilot_postgres_data:
+  routepilot_proof_files:
