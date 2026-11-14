@@ -20,7 +20,7 @@ contactForm?.addEventListener('submit',async event=>{
   const response=await fetch(endpoint,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(data)});
   const result=await response.json();
   if(!response.ok) throw new Error(result.error||'Submission failed');
-  contactForm.reset();status.textContent='Thank you. Your inquiry has been received.';
+  contactForm.reset();status.textContent=result.reference?'Request received. Your tracking code is '+result.reference+'. Save it and track your request at '+new URL('requests/',window.location.href).href:'Thank you. Your inquiry has been received.';
  }catch(error){status.textContent='We could not send the inquiry. Please email eryndexco@gmail.com.';}
  finally{button.disabled=false;}
 });
