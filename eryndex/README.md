@@ -15,6 +15,18 @@ Responsive bilingual (English/Persian) company website and portfolio.
 - `assets/script.js` — navigation, scroll progress and inquiry-form client logic
 - `contact-api/` — Cloudflare Worker source for server-side inquiry delivery
 
+## Cloudflare Pages deployment
+
+Connect the `arshiataheri851-ops/portfolio` GitHub repository to Cloudflare Pages and use these settings:
+- Production branch: `main`
+- Root directory: `eryndex`
+- Framework preset: `None` (or `No framework`)
+- Build command: leave empty
+- Build output directory: `.`
+- No environment variables are required for the static frontend at this stage.
+
+The site is plain HTML, CSS and JavaScript; there is no package installation or frontend build step. The `_headers` file in this directory is intended for Cloudflare Pages and will be applied when this directory is used as the deployment output. When the contact Worker is deployed, update `connect-src` in `_headers` to include its exact HTTPS origin, then test the browser policy.
+
 ## Important deployment status
 The contact form interface and validation are present. Until the Worker is deployed, configured with secrets and tested, submissions fall back to opening the visitor's email application. The online form is **not yet a live server-side submission service**. Follow `contact-api/README.md`.
 
