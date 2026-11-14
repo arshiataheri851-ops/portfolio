@@ -1,0 +1,4 @@
+User-agent: *
+Allow: /
+
+Sitemap: https://eryndex.pages.dev/sitemap.xml
