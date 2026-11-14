@@ -2,58 +2,77 @@
 
 Responsive bilingual (English/Persian) company website and engineering portfolio, published on Cloudflare Pages.
 
-## Preview
+## Public pages
+
 - English: https://eryndex.pages.dev/
 - Persian: https://eryndex.pages.dev/fa/
+- English leadership profile: https://eryndex.pages.dev/profile/
+- Persian leadership profile: https://eryndex.pages.dev/fa/profile/
 
 ## Structure
+
 - `index.html` — English homepage
 - `fa/index.html` — Persian homepage
-- `services/` — dedicated service pages
-- `work/` — project case-study pages
-- `assets/style.css` — shared responsive styles
-- `assets/script.js` — navigation, scroll progress and inquiry-form client logic
-- `contact-api/` — Cloudflare Worker source for server-side inquiry delivery
+- `profile/` and `fa/profile/` — concise bilingual leadership profiles
+- `services/` — four service detail pages
+- `work/` — five detailed engineering case studies
+- `assets/` — shared styles, scripts, and contact configuration
+- `contact-api/` — Cloudflare Worker source for inquiry delivery
+- `COMPANY_PROFILE.md` — canonical company profile
+- `PORTFOLIO_INDEX.md` — 16-project inventory and status notes
+- `PUBLICATION_AUDIT.md` — current cross-site consistency review
 
 ## Cloudflare Pages deployment
 
-Connect the `arshiataheri851-ops/portfolio` GitHub repository to Cloudflare Pages and use these settings:
+Connect the `arshiataheri851-ops/portfolio` repository to Cloudflare Pages with:
+
 - Production branch: `main`
 - Root directory: `eryndex`
-- Framework preset: `None` (or `No framework`)
-- Build command: leave empty
+- Framework preset: `None`
+- Build command: empty
 - Build output directory: `.`
-- No environment variables are required for the static frontend at this stage.
 
-The site is plain HTML, CSS and JavaScript; there is no package installation or frontend build step. The `_headers` file in this directory is intended for Cloudflare Pages and will be applied when this directory is used as the deployment output. When the contact Worker is deployed, update `connect-src` in `_headers` to include its exact HTTPS origin, then test the browser policy.
+The frontend is plain HTML, CSS and JavaScript and has no build step. Cloudflare Pages serves the static frontend and applies the `_headers` file when this directory is used as the deployment output. The contact Worker is a separate service and must be deployed independently.
 
-## Important deployment status
-The contact form interface and validation are present. Until the Worker is deployed, configured with secrets and tested, submissions fall back to opening the visitor's email application. The online form is **not yet a live server-side submission service**. Follow `contact-api/README.md`.
+## Contact form status
 
-GitHub Pages is static hosting. It does not run the Worker or allow arbitrary HTTP response headers. The current HTML Content Security Policy is a partial browser-side control, not a replacement for server response headers. For production, place the site behind a host/CDN that can enforce security headers, configure rate limiting and bot protection, and test the deployed configuration.
+The form interface and client-side validation are present. The configured contact endpoint in `assets/config.js` is currently blank, so submissions use the visitor's email application as a fallback. The online form is **not yet a live server-side submission service**.
 
-## Project accuracy
-RoutePilot and SignalDesk details are based on their repository READMEs. Other case-study pages deliberately avoid unverified architecture or performance claims; inspect the linked source repositories and update the pages only from verified implementation details.
+Before enabling the Worker:
+1. Deploy the Worker from `contact-api/`.
+2. Configure exact `ALLOWED_ORIGINS`, `CONTACT_TO`, and a verified `CONTACT_FROM`.
+3. Store `RESEND_API_KEY` as a Worker secret.
+4. Add rate limiting and bot protection.
+5. Set the deployed HTTPS Worker URL in `assets/config.js`.
+6. Add that exact Worker origin to `connect-src` in `_headers`.
+7. Test valid and invalid submissions, CORS preflight, provider failures, and successful delivery end to end.
+
+## Privacy and security
+
+The current form asks for a name, email, optional company, service selection, project brief and consent. The Worker forwards valid submissions to the configured mail-delivery provider and inquiry mailbox; it does not intentionally persist inquiry records. Provider and mailbox retention still need an explicit policy.
+
+A complete public privacy notice, data-retention period, and legally verified controller/entity details have not yet been published. Do not ask visitors to submit sensitive personal information, credentials, confidential customer data or secrets.
+
+Cloudflare Pages can apply response headers using `_headers`. The current policy is a baseline and must be reviewed whenever third-party endpoints or services are added. The Worker is not a replacement for edge rate limiting, abuse protection, monitoring or an operational incident process.
+
+## Portfolio accuracy
+
+The homepage lists 16 projects. FarsiPulse, AtlasRAG and RelayForge have dedicated product-site links; current uptime was not independently confirmed during the latest content audit. The other entries link to source repositories and are labelled as demonstrators, concepts or MVPs where appropriate.
+
+Important technical boundaries:
+- AtlasRAG currently uses PostgreSQL lexical full-text search; its source README explicitly says it does not yet use vector embeddings or semantic retrieval, and it does not claim LLM-generated answers.
+- RelayForge provides at-least-once delivery attempts, not exactly-once delivery.
+- RoutePilot uses simulated vehicle positions and is not connected to live GPS hardware.
+- SignalDesk is a service-desk MVP with deterministic prioritization, not an AI triage system.
 
 ## Profile publication
-Detailed CV, education, employment history, dates and performance metrics are withheld pending verification and approval. Team roles are described at a high level only.
 
-## Before production launch
-1. Deploy and test the contact Worker, configure a verified sender domain and store provider credentials as Worker secrets.
-2. Add rate limiting and bot protection, and confirm the privacy notice and retention policy.
-3. Configure production security response headers and HTTPS at the hosting/CDN layer.
-4. Audit all service claims and project case studies against code and tests.
-5. Confirm brand/legal identity and publish legal details only after formal verification.
-6. Add reviewed team biographies and verified credentials only with each person's approval.
+Public leadership pages are intentionally limited to the company role and responsibilities. Personal contact details, detailed CV claims, education, employment history and credentials require verification and explicit approval before publication.
 
-The site is plain HTML, CSS and JavaScript and requires no frontend build step.
+## Before public launch
 
-## Company information and portfolio documentation
-
-- [Canonical company profile](COMPANY_PROFILE.md) — brand identity, positioning, services, leadership roles, delivery approach, and publication safeguards.
-- [Portfolio index](PORTFOLIO_INDEX.md) — all 16 currently listed projects, source links, and accurate demonstrator/MVP status labels.
-- [Company overview](README.md) — public-facing overview of ERYNDEX and this website.
-
-The official public brand name is **ERYNDEX**. The company is presented as a software engineering and applied-AI partner. Do not publish unverified legal, customer, staffing, performance, certification, or production-SLA claims. See `COMPANY_PROFILE.md` for the claims that require confirmation.
-
-The portfolio includes demonstrators, reference implementations, concepts, and MVPs. Only FarsiPulse, AtlasRAG, and RelayForge are currently identified on the homepage as having dedicated public product websites; this is not evidence of customer deployment. See `PORTFOLIO_INDEX.md` for the current project inventory.
+- Deploy and test the contact Worker.
+- Publish a complete privacy notice and define retention.
+- Verify all live product-site links and deployment status.
+- Confirm legal company identity and any claims about customers, team size, credentials, certifications or delivery metrics.
+- Review security headers, abuse controls, monitoring and backups.
