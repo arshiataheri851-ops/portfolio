@@ -1,3 +1,9 @@
 name = "eryndex-contact-api"
 main = "worker.js"
 compatibility_date = "2026-11-14"
+
+[[d1_databases]]
+binding = "DB"
+database_name = "eryndex-requests"
+database_id = "REPLACE_AFTER_CREATING_D1"
+migrations_dir = "migrations"
