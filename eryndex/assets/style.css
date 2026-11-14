@@ -59,3 +59,20 @@ img,svg,video{max-width:100%;height:auto}
 
 /* Prominent profile link inside the founder's leadership card */
 .profile-card-link{display:flex;justify-content:space-between;align-items:center;gap:16px;margin:20px 0 18px;padding:14px 16px;border:1px solid var(--mint);color:var(--mint);font-size:10px;letter-spacing:.12em;text-decoration:none;transition:background .2s ease,color .2s ease}.profile-card-link:hover{background:var(--mint);color:#09121d}.profile-card-link span{font-size:16px}
+
+
+/* Portfolio expansion: live product links and complete project catalogue */
+.live-products{margin:0 0 34px;padding:22px;background:linear-gradient(135deg,#111e30,#0d1726);border:1px solid var(--line)}
+.live-products-head{display:flex;justify-content:space-between;align-items:center;gap:16px;margin-bottom:16px;color:var(--muted);font-size:10px}
+.live-product-links{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px}
+.live-product-links a{display:flex;flex-direction:column;gap:7px;padding:18px;background:#ffffff06;border:1px solid var(--line);transition:.2s}
+.live-product-links a:hover{border-color:var(--mint);transform:translateY(-3px)}
+.live-product-links b{font:600 19px var(--display);color:var(--text)}
+.live-product-links span{font-size:10px;color:var(--mint)}
+.work-actions{display:flex;gap:16px;flex-wrap:wrap;margin-top:17px;padding-top:13px;border-top:1px solid var(--line)}
+.work-actions .text-link{margin:0}
+.work-card .work-art .pulse-core{position:relative;z-index:1}
+.work-grid .work-card{display:flex;flex-direction:column;align-items:stretch}
+.work-grid .work-card .work-actions{margin-top:auto}
+.work-grid .work-card .tags{margin-top:4px}
+@media(max-width:700px){.live-product-links{grid-template-columns:1fr}.live-products-head{align-items:flex-start;flex-direction:column}.live-products{padding:16px}.work-actions{gap:12px}}
