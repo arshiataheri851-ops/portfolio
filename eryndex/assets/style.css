@@ -53,3 +53,6 @@ img,svg,video{max-width:100%;height:auto}
 @media(max-width:900px){.galaxy-stage{right:-4%;width:53vw;opacity:.55}.hero-content{max-width:68%}.orbit-guide{right:6vw;bottom:72px;width:270px}}
 @media(max-width:600px){.galaxy-stage{width:82vw;right:-26%;top:34%;opacity:.32}.galaxy-core span{font-size:10px}.galaxy-core small{font-size:4px}.nebula-one{width:70vw;height:50vw;right:-15%}.nebula-two{width:70vw;height:50vw;right:5%}.hero-content{max-width:100%}.hero-grid{opacity:.2}.orbit-guide{position:relative;right:auto;bottom:auto;width:100%;margin-top:42px}.guide-toggle{font-size:11px}.hero{height:auto;min-height:700px;padding-bottom:38px}.hero-bottom{bottom:22px}}
 @media(prefers-reduced-motion:reduce){.galaxy-core,.galaxy-orbit,.guide-signal{animation:none!important}}
+
+/* Keep detail-page navigation usable on narrow screens; homepage uses its own collapsible menu. */
+@media(max-width:600px){.header nav.subpage-nav{display:flex;position:static;inset:auto;max-width:68%;padding:0;background:transparent;border:0;flex-direction:row;flex-wrap:wrap;align-items:center;justify-content:flex-end;gap:6px 12px;font-size:10px}.header nav.subpage-nav .nav-cta{align-self:auto;padding:6px 8px}}
