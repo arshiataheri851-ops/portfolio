@@ -18,3 +18,38 @@ img,svg,video{max-width:100%;height:auto}
 @media(prefers-reduced-motion:reduce){*,*::before,*::after{animation-duration:.01ms!important;animation-iteration-count:1!important;scroll-behavior:auto!important}}
 
 @media(max-width:600px){.header nav{top:70px;right:0;left:0}.header .menu-toggle{display:flex;flex-direction:column;gap:6px;padding:10px;background:transparent;border:0}.header .menu-toggle span{width:23px;height:1px;background:var(--text)}}
+
+
+/* GALAXY EXPERIENCE — ERYNDEX */
+.hero{isolation:isolate;background:radial-gradient(ellipse at 74% 48%,rgba(39,74,128,.18),transparent 48%),#070b16}
+.hero-grid{opacity:.34;z-index:-3}
+.hero-glow{z-index:-2;right:10%;top:8%;width:min(70vw,850px);height:min(70vw,850px);background:radial-gradient(circle,rgba(92,113,255,.19),rgba(44,83,164,.09) 34%,transparent 69%);filter:blur(12px)}
+.cosmos-canvas{position:absolute;inset:0;width:100%;height:100%;z-index:-1;pointer-events:none;opacity:.95}
+.nebula{position:absolute;pointer-events:none;border-radius:50%;filter:blur(38px);mix-blend-mode:screen;z-index:-1}
+.nebula-one{width:38vw;height:24vw;right:5%;top:25%;background:radial-gradient(ellipse,rgba(93,53,180,.16),rgba(40,113,180,.09) 42%,transparent 72%);transform:rotate(-24deg)}
+.nebula-two{width:32vw;height:22vw;right:24%;top:42%;background:radial-gradient(ellipse,rgba(39,197,190,.12),rgba(83,92,204,.08) 48%,transparent 74%);transform:rotate(22deg)}
+.galaxy-stage{position:absolute;z-index:0;right:8%;top:50%;width:min(44vw,570px);aspect-ratio:1;transform:translateY(-50%);perspective:1000px;pointer-events:none;opacity:.94}
+.galaxy-stage:before,.galaxy-stage:after{content:"";position:absolute;inset:8%;border-radius:50%;border:1px solid rgba(146,181,255,.12);box-shadow:0 0 80px rgba(74,115,230,.08),inset 0 0 80px rgba(74,115,230,.06)}
+.galaxy-stage:after{inset:20%;border-color:rgba(141,240,208,.12);transform:rotateX(68deg) rotateZ(-25deg)}
+.galaxy-core{position:absolute;left:50%;top:50%;width:35%;aspect-ratio:1;border-radius:50%;transform:translate(-50%,-50%);display:flex;flex-direction:column;align-items:center;justify-content:center;background:radial-gradient(circle at 34% 28%,#b4e8ff 0,#7e9cff 7%,#354b99 20%,#151d49 49%,#080d20 72%);box-shadow:0 0 30px #6d9fff99,0 0 90px #4968d566,0 0 180px #3e5bd533,inset -18px -20px 35px #030711;animation:core-float 8s ease-in-out infinite}
+.galaxy-core:before{content:"";position:absolute;inset:-13%;border-radius:50%;border:1px solid rgba(142,192,255,.35);box-shadow:0 0 24px #83baff33}
+.galaxy-core:after{content:"";position:absolute;inset:13%;border-radius:50%;background:radial-gradient(circle at 28% 24%,rgba(255,255,255,.5),transparent 23%);filter:blur(2px)}
+.galaxy-core span,.galaxy-core small{position:relative;z-index:1;text-shadow:0 2px 12px #050a1c;font:700 clamp(9px,1.2vw,15px) 'Space Grotesk',sans-serif;letter-spacing:.2em}
+.galaxy-core small{font-size:clamp(4px,.48vw,6px);letter-spacing:.14em;margin-top:7px;color:#c3d4ff}
+.galaxy-orbit{position:absolute;left:50%;top:50%;width:88%;height:34%;border:1px solid rgba(143,191,255,.38);border-radius:50%;transform:translate(-50%,-50%) rotate(-25deg) rotateX(64deg);box-shadow:0 0 18px rgba(88,145,255,.12);animation:orbit-spin 24s linear infinite}
+.galaxy-orbit i{position:absolute;left:12%;top:7%;width:11px;height:11px;border-radius:50%;background:#a8f7e2;box-shadow:0 0 12px #8df0d0,0 0 28px #8df0d0}
+.orbit-b{width:110%;height:46%;transform:translate(-50%,-50%) rotate(36deg) rotateX(66deg);border-color:rgba(174,151,255,.3);animation-duration:34s;animation-direction:reverse}
+.orbit-b i{left:78%;top:83%;width:7px;height:7px;background:#c5a9ff;box-shadow:0 0 14px #b99cff,0 0 30px #b99cff}
+.orbit-c{width:72%;height:65%;transform:translate(-50%,-50%) rotate(72deg) rotateX(69deg);border-color:rgba(105,218,229,.22);animation-duration:43s}
+.orbit-c i{left:48%;top:-3%;width:5px;height:5px;background:#8deaff;box-shadow:0 0 16px #8deaff}
+@keyframes orbit-spin{to{filter:hue-rotate(35deg);transform:translate(-50%,-50%) rotate(335deg) rotateX(64deg)}}
+@keyframes core-float{0%,100%{filter:brightness(.94);transform:translate(-50%,-50%) scale(.98)}50%{filter:brightness(1.13);transform:translate(-50%,-52%) scale(1.02)}}
+.orbit-guide{position:absolute;z-index:4;right:7vw;bottom:82px;width:min(320px,36vw);font-family:var(--font)}
+.guide-toggle{width:100%;display:flex;align-items:center;gap:10px;padding:12px 14px;background:rgba(9,17,36,.78);border:1px solid rgba(141,240,208,.32);border-radius:6px;color:#eaf4ff;backdrop-filter:blur(14px);font:600 11px var(--font);text-align:left;cursor:pointer;box-shadow:0 10px 35px #0004}
+.guide-toggle b{margin-left:auto;color:var(--mint);font-size:18px}.guide-signal{width:7px;height:7px;border-radius:50%;background:var(--mint);box-shadow:0 0 12px var(--mint);animation:signal-blink 2s infinite}
+@keyframes signal-blink{50%{opacity:.35;box-shadow:0 0 2px var(--mint)}}
+.guide-panel{margin-top:8px;padding:18px;background:rgba(9,17,36,.94);border:1px solid rgba(141,240,208,.2);border-radius:6px;backdrop-filter:blur(18px);box-shadow:0 20px 60px #0008}
+.guide-kicker{font-size:8px;letter-spacing:.2em;color:var(--mint);margin-bottom:8px}.guide-panel h3{font-size:19px;margin-bottom:14px}.guide-actions{display:grid;gap:7px}.guide-actions button{padding:9px 11px;text-align:left;color:#dce9fa;background:#ffffff08;border:1px solid var(--line);border-radius:3px;font:11px var(--font);cursor:pointer}.guide-actions button:hover{border-color:var(--mint);color:var(--mint)}.guide-answer{font-size:10px;color:#aebed2;margin:12px 0 0;line-height:1.7}
+@media(max-width:900px){.galaxy-stage{right:-4%;width:53vw;opacity:.55}.hero-content{max-width:68%}.orbit-guide{right:6vw;bottom:72px;width:270px}}
+@media(max-width:600px){.galaxy-stage{width:82vw;right:-26%;top:34%;opacity:.32}.galaxy-core span{font-size:10px}.galaxy-core small{font-size:4px}.nebula-one{width:70vw;height:50vw;right:-15%}.nebula-two{width:70vw;height:50vw;right:5%}.hero-content{max-width:100%}.hero-grid{opacity:.2}.orbit-guide{position:relative;right:auto;bottom:auto;width:100%;margin-top:42px}.guide-toggle{font-size:11px}.hero{height:auto;min-height:700px;padding-bottom:38px}.hero-bottom{bottom:22px}}
+@media(prefers-reduced-motion:reduce){.galaxy-core,.galaxy-orbit,.guide-signal{animation:none!important}}
