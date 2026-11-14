@@ -47,3 +47,13 @@ Detailed CV, education, employment history, dates and performance metrics are wi
 6. Add reviewed team biographies and verified credentials only with each person's approval.
 
 The site is plain HTML, CSS and JavaScript and requires no frontend build step.
+
+## Company information and portfolio documentation
+
+- [Canonical company profile](COMPANY_PROFILE.md) — brand identity, positioning, services, leadership roles, delivery approach, and publication safeguards.
+- [Portfolio index](PORTFOLIO_INDEX.md) — all 16 currently listed projects, source links, and accurate demonstrator/MVP status labels.
+- [Company overview](README.md) — public-facing overview of ERYNDEX and this website.
+
+The official public brand name is **ERYNDEX**. The company is presented as a software engineering and applied-AI partner. Do not publish unverified legal, customer, staffing, performance, certification, or production-SLA claims. See `COMPANY_PROFILE.md` for the claims that require confirmation.
+
+The portfolio includes demonstrators, reference implementations, concepts, and MVPs. Only FarsiPulse, AtlasRAG, and RelayForge are currently identified on the homepage as having dedicated public product websites; this is not evidence of customer deployment. See `PORTFOLIO_INDEX.md` for the current project inventory.
