@@ -39,3 +39,10 @@ py -m pytest -q
 
 ## Current limitations before customer deployment
 This is an executable MVP, not a hardened commercial deployment. It has no user authentication, role permissions, tenant isolation, email intake, outbound notifications, configurable SLA calendars, attachments, database migrations, backups, or external integrations. Do not expose it to the public internet or store real customer personal data until these controls are implemented. Configure CORS for the exact production frontend origin before deployment.
+
+
+## Outbound email notifications
+Configure `SMTP_HOST`, `SMTP_PORT`, `SMTP_FROM` and (when required) `SMTP_USERNAME` / `SMTP_PASSWORD` in the deployment environment. TLS via STARTTLS is used by default; set `SMTP_USE_SSL=true` only for an SSL SMTP endpoint. Secrets must stay in the deployment secret store or local `.env`, never in source control.
+- `POST /notifications/email` sends an email for a ticket after verifying that the ticket belongs to the authenticated organization.
+- Successful sends are recorded in the ticket audit history.
+- If SMTP is not configured or delivery fails, the API returns a service error; no email is silently marked as sent.

@@ -3,9 +3,26 @@ from uuid import uuid4
 
 from fastapi.testclient import TestClient
 
-from app.main import app
+from app.main import app, db
+from app.security import current_user
+
+# Existing workflow tests run as a trusted fixture identity; auth rejection is tested separately.
+app.dependency_overrides[current_user] = lambda: {
+    'id': 'test-user', 'organization_id': 'test-org', 'email': 'tester@example.test', 'role': 'admin'
+}
 
 client = TestClient(app)
+
+# Deterministic tenant fixture; CI intentionally has no bootstrap secrets.
+with db() as _db:
+    _db.execute("INSERT INTO organizations(id,name,created_at) VALUES('test-org','Test Org','2026-01-01T00:00:00+00:00') ON CONFLICT DO NOTHING")
+    _db.executemany("INSERT INTO tickets(id,title,queue,account_tier,priority,status,assignee,created_at,due_at,organization_id) VALUES(?,?,?,?,?,?,?,?,?,?)", [
+        ('SD-1048','Payment confirmation delayed','Checkout','Enterprise','High','open',None,'2026-01-01T00:00:00+00:00','2027-01-01T00:00:00+00:00','test-org'),
+        ('SD-1047','Update billing contact details','Billing','Standard','Medium','open',None,'2026-01-01T00:00:00+00:00','2027-01-01T00:00:00+00:00','test-org'),
+        ('SD-1046','Webhook events not received','Integrations','Enterprise','High','open',None,'2026-01-01T00:00:00+00:00','2027-01-01T00:00:00+00:00','test-org'),
+        ('SD-1045','Export monthly usage report','Reporting','Standard','Low','open',None,'2026-01-01T00:00:00+00:00','2027-01-01T00:00:00+00:00','test-org'),
+        ('SD-1044','Invite link expired','Accounts','Growth','Medium','open',None,'2026-01-01T00:00:00+00:00','2027-01-01T00:00:00+00:00','test-org'),
+    ])
 
 
 def test_health():
@@ -77,3 +94,49 @@ def test_readiness_checks_database():
     response = client.get("/ready")
     assert response.status_code == 200
     assert response.json()["status"] == "ready"
+
+
+def test_business_api_rejects_missing_authentication():
+    override = app.dependency_overrides.pop(current_user, None)
+    try:
+        response = client.get("/tickets")
+        assert response.status_code == 401
+    finally:
+        if override is not None:
+            app.dependency_overrides[current_user] = override
+
+def test_tenant_cannot_read_or_update_another_organizations_ticket():
+    with db() as c:
+        c.execute("INSERT INTO organizations(id,name,created_at) VALUES('other-org','Other Org','2026-01-02T00:00:00+00:00') ON CONFLICT DO NOTHING")
+        c.execute("INSERT INTO tickets(id,title,queue,account_tier,priority,status,assignee,created_at,due_at,organization_id) VALUES('SD-OTHER','Private ticket','Billing','Standard','Low','open',NULL,'2026-01-02T00:00:00+00:00','2027-01-02T00:00:00+00:00','other-org') ON CONFLICT DO NOTHING")
+    assert client.get("/tickets/SD-OTHER/events").status_code == 404
+    assert all(row["id"] != "SD-OTHER" for row in client.get("/tickets").json())
+    assert client.patch("/tickets/SD-OTHER/status", json={"status":"resolved"}).status_code == 404
+
+
+def test_outbound_email_requires_ticket_and_records_audit(monkeypatch):
+    from app import main as signaldesk_main
+    monkeypatch.setattr(signaldesk_main, "send_email", lambda recipient, subject, body: "<test-message-id>")
+    response = client.post("/notifications/email", json={
+        "ticket_id": "SD-1048", "recipient": "customer@example.test",
+        "subject": "Update", "body": "We are reviewing your request."
+    })
+    assert response.status_code == 202
+    assert response.json()["message_id"] == "<test-message-id>"
+    missing = client.post("/notifications/email", json={
+        "ticket_id": "SD-NOT-FOUND", "recipient": "customer@example.test",
+        "subject": "Update", "body": "Hello"
+    })
+    assert missing.status_code == 404
+
+
+def test_outbound_email_returns_503_when_smtp_is_not_configured(monkeypatch):
+    from app import main as signaldesk_main
+    def unavailable(*args, **kwargs):
+        raise RuntimeError("Outbound email is not configured")
+    monkeypatch.setattr(signaldesk_main, "send_email", unavailable)
+    response = client.post("/notifications/email", json={
+        "ticket_id": "SD-1048", "recipient": "customer@example.test",
+        "subject": "Update", "body": "Hello"
+    })
+    assert response.status_code == 503

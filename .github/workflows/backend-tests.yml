@@ -16,6 +16,20 @@ on:
 jobs:
   test:
     runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_USER: app
+          POSTGRES_PASSWORD: ci-password
+          POSTGRES_DB: app_test
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U app -d app_test"
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
     strategy:
       fail-fast: false
       matrix:
@@ -37,5 +51,16 @@ jobs:
           cache-dependency-path: ${{ matrix.directory }}/requirements.txt
       - name: Install dependencies
         run: python -m pip install -r requirements.txt
-      - name: Run tests
+      - name: Create isolated PostgreSQL database
+        env:
+          PGPASSWORD: ci-password
+        run: createdb -h localhost -U app ${{ matrix.product == 'RoutePilot' && 'routepilot_test' || 'signaldesk_test' }}
+      - name: Apply database migrations
+        env:
+          DATABASE_URL: postgresql+psycopg://app:ci-password@localhost:5432/${{ matrix.product == 'RoutePilot' && 'routepilot_test' || 'signaldesk_test' }}
+        run: alembic upgrade head
+      - name: Run tests against PostgreSQL
+        env:
+          DATABASE_URL: postgresql+psycopg://app:ci-password@localhost:5432/${{ matrix.product == 'RoutePilot' && 'routepilot_test' || 'signaldesk_test' }}
+          AUTH_JWT_SECRET: ci-only-secret-that-is-at-least-32-bytes-long
         run: python -m pytest -q

@@ -10,11 +10,13 @@ RUN python -m pip install --no-cache-dir --upgrade pip \
     && python -m pip install --no-cache-dir -r requirements.txt
 
 COPY app ./app
+COPY migrations ./migrations
+COPY alembic.ini ./alembic.ini
 
 # Prepare writable persistent storage before dropping privileges. Docker's
 # named-volume initialization copies these permissions into a new volume.
 RUN useradd --system --uid 10001 --create-home appuser \
-    && mkdir -p /data \
+    && mkdir -p /data/proofs \
     && chown -R appuser:appuser /app /data
 
 USER 10001:10001

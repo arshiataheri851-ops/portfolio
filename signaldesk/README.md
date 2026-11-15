@@ -1,31 +1,38 @@
-# SignalDesk — Service Operations Intelligence MVP
+# SignalDesk — Service Operations Demo
 
-SignalDesk is an executable service-desk MVP with a FastAPI + SQLite backend and browser dashboard for creating, assigning, prioritizing and tracking support tickets.
+An executable service-desk portfolio demo: FastAPI, PostgreSQL 16, Alembic migrations and a static browser dashboard for ticket intake, assignment, SLA triage and audit history.
 
-## Included
-- Sample operations overview with queue metrics
-- Searchable request queue
-- Priority and SLA-risk filters
-- API-backed assignment, status changes and per-ticket audit history
-- Queue distribution visualization
-- Transparent rule-based prioritization explanation
+## Run on Windows
 
-## Run locally
-Open `index.html` in a modern browser. Start the API from this folder with `docker compose up --build`; the API is bound to `127.0.0.1:8001`.
+1. Copy `.env.example` to `.env` and set a unique `POSTGRES_PASSWORD`, a random `AUTH_JWT_SECRET` (at least 32 characters), `BOOTSTRAP_ORG_NAME`, `BOOTSTRAP_ADMIN_EMAIL` and `BOOTSTRAP_ADMIN_PASSWORD` (at least 14 characters). Never commit `.env`.
+2. From this folder, run:
+   ```powershell
+   docker compose up --build
+   ```
+3. In a second terminal, serve the dashboard:
+   ```powershell
+   py -m http.server 5500
+   ```
+4. Open http://127.0.0.1:5500 and sign in with the bootstrap values from `.env`.
 
-## CORS configuration
-Copy `.env.example` to `.env` and set `SIGNALDESK_CORS_ORIGINS` to the exact frontend origin(s), comma-separated. Do not use a wildcard. The default is for local development only. For public hosting, place the API behind a TLS reverse proxy and keep the container port private.
+The API listens on http://127.0.0.1:8001; interactive docs: http://127.0.0.1:8001/docs. PostgreSQL persists in a Docker volume. The first run applies migrations and seeds sample tickets for the bootstrap organization.
 
-## Health checks
-The API exposes `/health` for process liveness and `/ready` for database readiness. Docker uses the readiness endpoint for its container health check.
+## Demonstrated workflows
 
-## Production requirements
-A commercial deployment requires authenticated users, organization/tenant isolation, role permissions, PostgreSQL with migrations, tested backups and restore, HTTPS, monitoring, and operational runbooks. Email intake and outbound notifications require a configured provider, verified sender domain, credentials stored outside source control, retry handling and delivery logs. Any AI-assisted triage must be separately evaluated, explainable, permission-aware and subject to human review.
+- Login with short-lived bearer tokens; role checks and organization-scoped ticket access.
+- Search and filter by priority and SLA risk.
+- Create tickets, assign an operator, change status and inspect audit history.
+- Deterministic, explainable SLA-risk and priority scoring.
+- Optional outbound SMTP email endpoint with ticket ownership check and audit event.
 
-## Important scope
-This is an MVP, not a production-ready service desk. Initial records are illustrative. New tickets, assignments and status changes persist in SQLite when the API is running. SLA risk and priority are transparent deterministic rules, not AI predictions. Authentication, roles, tenant isolation, email intake and notifications are not yet implemented. Do not expose it publicly or store real customer data before these controls are added and tested.
+## Email configuration
 
-Built as an ERYNDEX portfolio project.
+Set `SMTP_HOST`, `SMTP_PORT`, `SMTP_FROM` and (when needed) `SMTP_USERNAME` / `SMTP_PASSWORD` in local `.env`. STARTTLS is used by default; configure SSL only when required by the provider. Never commit credentials. The SMTP send is synchronous and has no retry queue or inbound email ingestion yet.
 
-## Backend
-See [backend setup](backend/README.md). Interactive API documentation is available at `/docs` while the local API is running.
+## Important limitations
+
+This is a portfolio demonstration, not a production service desk. No inbound email processing, queued retries, provider delivery webhooks, production TLS/domain, monitoring, rate limiting or formal security review are included. SLA rules are illustrative and must be configured to a real service contract before operational use. Do not use real customer data or expose it publicly without those controls.
+
+## Tests
+
+`cd backend; py -m pip install -r requirements.txt; py -m pytest -q`. CI also runs the API suite against PostgreSQL 16.

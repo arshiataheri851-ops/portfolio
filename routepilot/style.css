@@ -7,3 +7,9 @@
 .proof-action{background:#18392f;border:1px solid #315a4b;color:var(--mint);padding:6px 9px;border-radius:5px;cursor:pointer;font:10px Manrope}
 .proof-action:disabled{opacity:.6;cursor:default}
 @media(max-width:760px){.delivery-form-grid{grid-template-columns:1fr 1fr}}
+
+.gps-control{display:flex;flex-direction:column;gap:9px;padding:15px;border:1px solid var(--line);border-radius:8px;background:#0b1720}
+.gps-control p,.gps-control small{margin:0;color:var(--muted);font-size:10px;line-height:1.6}
+.gps-control label{font:10px 'DM Mono';color:var(--muted)}
+.gps-control select{padding:8px;border:1px solid var(--line);border-radius:5px}
+.gps-control button:disabled{opacity:.5;cursor:not-allowed}
