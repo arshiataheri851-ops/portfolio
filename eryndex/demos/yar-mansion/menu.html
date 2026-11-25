@@ -42,9 +42,9 @@ const photos={
 "قهوه":["photo-1509042239860-f550ce710b93","photo-1442512595331-e89e73853f31"],
 "قهوه‌های دمی":["photo-1495474472287-4d71bcdd2085","photo-1442512595331-e89e73853f31"],
 "قهوه‌های سرد":["photo-1461023058943-07fcbe16d735","photo-1517701604599-bb29b565090c"],
-"چای":["photo-1544787219-7f47erl?","photo-1544787219-7f47erl"],
+"چای":["photo-1576092768241-dec231879fc3","photo-1576092768241-dec231879fc3"],
 "نوشیدنی گرم":["photo-1517701604599-bb29b565090c","photo-1572490122747-3968b75cc699"],
-"دمنوش":["photo-1544787219-7f47erl","photo-1513558161293-cdaf765edfd4"],
+"دمنوش":["photo-1576092768241-dec231879fc3","photo-1513558161293-cdaf765edfd4"],
 "نوشیدنی سرد":["photo-1513558161293-cdaf765edfd4","photo-1532634896-26909d0d4b8b"],
 "شیک":["photo-1572490122747-3968b75cc699","photo-1577805947697-89e18249d767"],
 "پوره":["photo-1490474418585-ba9bad8fd0ea","photo-1490645935967-10de6ba17061"],
@@ -56,11 +56,11 @@ const photos={
 "غذای اصلی":["photo-1544025162-d76694265947","photo-1555939594-58d7cb561ad1"],
 "کلاب":["photo-1528735602780-2552fd46c7af","photo-1553909489-cd47e0ef937f"],
 "ساندویچ چاپاتا":["photo-1553909489-cd47e0ef937f","photo-1528735602780-2552fd46c7af"],
-"پاستا":["photo-1473093295043-cdd812d0e601","photo- pasta"],
+"پاستا":["photo-1473093295043-cdd812d0e601","photo-1473093295043-cdd812d0e601"],
 "برگر":["photo-1568901346375-23c9450c58cd","photo-1550547660-d9450f859349"]
 };
 const fallback="photo-1498837167922-ddd27525d352";
-function imageFor(cat,i){const arr=photos[cat]||[fallback];let id=arr[i%arr.length];if(id.includes("?")||id==="photo- pasta")id=fallback;return "https://images.unsplash.com/"+id+"?auto=format&fit=crop&w=900&q=82"}
+function imageFor(cat,i){const arr=photos[cat]||[fallback];let id=arr[i%arr.length];if(id.includes("?"))id=fallback;return "https://images.unsplash.com/"+id+"?auto=format&fit=crop&w=900&q=82"}
 function drawTabs(){tabs.innerHTML=["همه",...cats].map(c=>'<button class="tab '+(active===c?"active":"")+'" data-c="'+esc(c)+'">'+esc(c)+'</button>').join("");tabs.querySelectorAll("button").forEach(b=>b.onclick=()=>{active=b.dataset.c;drawTabs();draw()})}
 function draw(){const term=q.value.trim().toLocaleLowerCase("fa");const found=data.filter(x=>(active==="همه"||x[0]===active)&&x.join(" ").toLocaleLowerCase("fa").includes(term));count.textContent=found.length+" انتخاب از "+data.length+" آیتم منو";if(!found.length){results.innerHTML='<div class="empty">موردی پیدا نشد؛ عبارت دیگری را جست‌وجو کنید.</div>';return}
 const order=active==="همه"?cats:[active];results.innerHTML=order.map(c=>{const list=found.filter(x=>x[0]===c);if(!list.length)return "";return '<section class="group"><div class="grouphead"><h3>'+esc(c)+'</h3><small>'+list.length+' انتخاب</small></div><div class="cards">'+list.map((x,i)=>'<article class="item"><div class="photo"><img loading="lazy" src="'+imageFor(c,i)+'" alt="'+esc(x[1])+'" onerror="this.onerror=null;this.src=\'https://images.unsplash.com/'+fallback+'?auto=format&fit=crop&w=900&q=82\'"><span class="tag">'+esc(c)+'</span></div><div class="itemBody"><div class="itemTitle"><h4>'+esc(x[1])+'</h4><div class="price">'+esc(x[3])+'</div></div><p class="desc">'+(x[2]?esc(x[2]):"برای اطلاع از جزئیات و ترکیبات این انتخاب، از همکاران عمارت بپرسید.")+'</p><div class="meta"><span>تهیه‌شده در عمارت یار</span><b>مشاهده جزئیات</b></div></div></article>').join("")+'</div></section>'}).join("")}
